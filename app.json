@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "AppMovilNumismatica",
+    "slug": "app-movil-numismatica",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": false,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Necesitamos la cámara para capturar fotos de las piezas.",
+        "NSPhotoLibraryUsageDescription": "Necesitamos acceso a la galería para seleccionar fotos."
+      }
+    },
+    "android": {
+      "package": "com.metromecanica.appmovilnumismatica",
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permitir acceso a la cámara para capturar fotos."
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ed93423e-f116-4e84-9761-694e9b3d7307"
+      }
+    }
+  }
+}
