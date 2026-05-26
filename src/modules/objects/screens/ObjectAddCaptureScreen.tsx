@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, Alert } from 'react-native';
+import { View, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { PhotoCapture } from '@/components/PhotoCapture';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { Field } from '@/components/Field';
+import { Section } from '@/components/Section';
+import { Selector } from '@/components/Selector';
+import { KeyboardScroll } from '@/components/KeyboardScroll';
 import { useAppConfig } from '@/context/ConfigContext';
 import { PickerSheet } from '@/components/PickerSheet';
 import type { ObjectsStackParamList } from '../navigation/ObjectsNavigator';
@@ -42,39 +46,46 @@ export const ObjectAddCaptureScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView className="flex-1 bg-bg p-3">
-      <Text className="text-white text-xl font-bold mb-3">Nuevo objeto</Text>
-      <PhotoCapture label="Foto principal" uri={obv} onCaptured={setObv} />
-      <View className="h-3" />
-      <PhotoCapture label="Foto secundaria (opcional)" uri={rev} onCaptured={setRev} />
-      <View className="h-3" />
-      <View className="bg-surface p-3 rounded-md mb-2">
-        <Text className="text-muted text-xs mb-1">Nombre</Text>
-        <TextInput
+    <KeyboardScroll>
+      <Section title="Fotografías" description="La principal es obligatoria; la secundaria es opcional.">
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            <PhotoCapture label="Principal" uri={obv} onCaptured={setObv} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <PhotoCapture label="Secundaria" uri={rev} onCaptured={setRev} />
+          </View>
+        </View>
+      </Section>
+
+      <Section title="Identificación">
+        <Field
+          label="Nombre"
           value={name}
           onChangeText={setName}
           placeholder="Ej: Pikachu Holo 1999 #25"
-          placeholderTextColor="#64748b"
-          className="text-white text-base"
         />
-      </View>
-      <Selector
-        label="Tipo"
-        value={t ? `${t.emoji} ${t.name}` : '—'}
-        onPress={() => setPickerOpen('type')}
-      />
-      <Selector
-        label="Categoría"
-        value={c ? `${c.emoji} ${c.name}` : '—'}
-        onPress={() => setPickerOpen('category')}
-      />
-      <View className="h-4" />
+        <View style={{ gap: 10 }}>
+          <Selector
+            label="Tipo"
+            value={t ? `${t.emoji} ${t.name}` : '—'}
+            onPress={() => setPickerOpen('type')}
+          />
+          <Selector
+            label="Categoría"
+            value={c ? `${c.emoji} ${c.name}` : '—'}
+            onPress={() => setPickerOpen('category')}
+          />
+        </View>
+      </Section>
+
       <PrimaryButton
         label="Buscar en eBay"
         onPress={proceed}
         disabled={!canContinue}
+        size="lg"
+        fullWidth
       />
-      <View className="h-16" />
 
       <PickerSheet
         title="Tipo"
@@ -101,19 +112,6 @@ export const ObjectAddCaptureScreen: React.FC = () => {
         onSelect={setCategoryId}
         onClose={() => setPickerOpen(null)}
       />
-    </ScrollView>
+    </KeyboardScroll>
   );
 };
-
-const Selector: React.FC<{ label: string; value: string; onPress: () => void }> = ({
-  label,
-  value,
-  onPress,
-}) => (
-  <View className="bg-surface p-3 rounded-md mb-2">
-    <Text className="text-muted text-xs mb-1">{label}</Text>
-    <Text className="text-white text-base" onPress={onPress}>
-      {value} ▾
-    </Text>
-  </View>
-);

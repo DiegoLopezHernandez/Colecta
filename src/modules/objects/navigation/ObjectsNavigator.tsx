@@ -4,6 +4,7 @@ import { ObjectsListScreen } from '../screens/ObjectsListScreen';
 import { ObjectAddCaptureScreen } from '../screens/ObjectAddCaptureScreen';
 import { ObjectAddConfirmScreen } from '../screens/ObjectAddConfirmScreen';
 import { ObjectDetailScreen } from '../screens/ObjectDetailScreen';
+import { colors } from '@/theme/colors';
 
 export type ObjectsStackParamList = {
   ObjectsList: undefined;
@@ -23,10 +24,11 @@ const Stack = createNativeStackNavigator<ObjectsStackParamList>();
 export const ObjectsNavigator: React.FC = () => (
   <Stack.Navigator
     screenOptions={{
-      headerStyle: { backgroundColor: '#0f172a' },
-      headerTintColor: '#fff',
-      headerTitleStyle: { color: '#fff' },
-      contentStyle: { backgroundColor: '#0f172a' },
+      headerStyle: { backgroundColor: colors.bg },
+      headerTintColor: colors.text,
+      headerTitleStyle: { color: colors.text, fontSize: 17, fontWeight: '600' },
+      headerShadowVisible: false,
+      contentStyle: { backgroundColor: colors.bg },
     }}
   >
     <Stack.Screen

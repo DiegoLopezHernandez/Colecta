@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, Alert, ScrollView, Share } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { Section } from '@/components/Section';
+import { Card } from '@/components/Card';
 import { exportAllAsJson, importFromJson, wipeAllData } from '@/storage/dataBackup';
 import { useCollection } from '@/context/CollectionContext';
 import { useAppConfig } from '@/context/ConfigContext';
@@ -33,7 +35,7 @@ export const DataMgmtScreen: React.FC = () => {
   const doImport = async () => {
     Alert.alert(
       'Importar',
-      'Pega el JSON manualmente en el archivo de import. (En esta versión gratis sin DocumentPicker, lee de /backup_in.json del cache si existe.)',
+      'Coloca el archivo JSON en backup_in.json dentro del cache y pulsa “Leer cache”.',
       [
         { text: 'OK' },
         {
@@ -87,24 +89,48 @@ export const DataMgmtScreen: React.FC = () => {
     );
 
   return (
-    <ScrollView className="flex-1 bg-bg p-3">
-      <Text className="text-white text-xl font-bold mb-3">Datos</Text>
-      <Text className="text-muted text-xs mb-3">
-        El export incluye configuración, monedas, objetos y snapshots. Las
-        imágenes quedan referenciadas por su ruta local; si reinstalas la app
-        las referencias se perderán.
-      </Text>
-      <PrimaryButton label="Exportar JSON" onPress={doExport} loading={busy} />
-      <View className="h-3" />
-      <PrimaryButton
-        label="Importar JSON"
-        onPress={doImport}
-        loading={busy}
-        variant="secondary"
-      />
-      <View className="h-3" />
-      <PrimaryButton label="Borrar todo" onPress={doWipe} variant="danger" />
-      <View className="h-16" />
+    <ScrollView
+      style={{ flex: 1, backgroundColor: '#0B0B0D' }}
+      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+    >
+      <Section
+        title="Información"
+        description="El export incluye configuración, monedas, objetos y snapshots."
+      >
+        <Card>
+          <Text style={{ color: '#A1A1AA', fontSize: 13, lineHeight: 19 }}>
+            Las imágenes quedan referenciadas por su ruta local. Si reinstalas la app,
+            las referencias a fotos se perderán aunque se restauren los datos.
+          </Text>
+        </Card>
+      </Section>
+
+      <Section title="Acciones">
+        <View style={{ gap: 10 }}>
+          <PrimaryButton
+            label="Exportar JSON"
+            icon="📤"
+            onPress={doExport}
+            loading={busy}
+            fullWidth
+          />
+          <PrimaryButton
+            label="Importar JSON"
+            icon="📥"
+            onPress={doImport}
+            loading={busy}
+            variant="secondary"
+            fullWidth
+          />
+          <PrimaryButton
+            label="Borrar todo"
+            icon="🗑"
+            onPress={doWipe}
+            variant="danger"
+            fullWidth
+          />
+        </View>
+      </Section>
     </ScrollView>
   );
 };

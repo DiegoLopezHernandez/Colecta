@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, ScrollView, Alert } from 'react-native';
+import { View, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import type { NativeStackNavigationProp, RouteProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { fetchFullData } from '@/services/numistaService';
 import { fetchLastPrice } from '@/services/ebayService';
 import { useAppConfig } from '@/context/ConfigContext';
@@ -10,7 +11,14 @@ import { LoadingView } from '@/components/LoadingView';
 import { ErrorView } from '@/components/ErrorView';
 import { PickerSheet } from '@/components/PickerSheet';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { Field } from '@/components/Field';
+import { Section } from '@/components/Section';
+import { Card } from '@/components/Card';
+import { DataRow } from '@/components/DataRow';
+import { Selector } from '@/components/Selector';
+import { KeyboardScroll } from '@/components/KeyboardScroll';
 import { newId } from '@/utils/id';
+import { haptic } from '@/utils/haptics';
 import { COIN_CONDITIONS } from '@/types';
 import { CONDITION_LABEL_ES } from '@/utils/conditions';
 import type { CoinsStackParamList } from '../navigation/CoinsNavigator';
@@ -25,37 +33,37 @@ export const CoinAddConfirmScreen: React.FC = () => {
   const { config } = useAppConfig();
   const { coins, addOrUpdateCoin } = useCollection();
 
-  const [loading, setLoading] = useState(!params.manual);
+  const hasNumista = params.numistaId !== undefined;
+
+  const [loading, setLoading] = useState(hasNumista);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<NumistaFullData | null>(null);
-  const [title, setTitle] = useState('');
+  const [title, setTitle] = useState(params.title ?? '');
 
   const [condition, setCondition] = useState<CoinCondition>('Very Fine');
   const [categoryId, setCategoryId] = useState(config.coinCategories[0]?.id ?? '');
-  const [possessionId, setPossessionId] = useState(
-    config.possessionStatuses[0]?.id ?? ''
-  );
+  const [possessionId, setPossessionId] = useState(config.possessionStatuses[0]?.id ?? '');
   const [notes, setNotes] = useState('');
 
-  const [pickerOpen, setPickerOpen] = useState<
-    null | 'condition' | 'category' | 'possession'
-  >(null);
+  const [pickerOpen, setPickerOpen] = useState<null | 'condition' | 'category' | 'possession'>(null);
 
-  // eBay
   const [ebayPrice, setEbayPrice] = useState<number | undefined>();
   const [ebayCurrency, setEbayCurrency] = useState<string | undefined>();
   const [ebayDate, setEbayDate] = useState<string | undefined>();
   const [ebayNotFound, setEbayNotFound] = useState(false);
 
   useEffect(() => {
-    if (params.manual) return;
+    if (!hasNumista || params.numistaId === undefined) return;
+    let cancelled = false;
     setLoading(true);
-    fetchFullData(config.numistaApiKey, params.numistaId!)
+    fetchFullData(config.numistaApiKey, params.numistaId)
       .then(async (full) => {
+        if (cancelled) return;
         setData(full);
         setTitle(full.title);
         try {
           const r = await fetchLastPrice(config.ebayClientId, full.title);
+          if (cancelled) return;
           if (r) {
             setEbayPrice(r.price);
             setEbayCurrency(r.currency);
@@ -63,55 +71,35 @@ export const CoinAddConfirmScreen: React.FC = () => {
           } else {
             setEbayNotFound(true);
           }
-        } catch (e) {
-          console.warn('eBay error', e);
-          setEbayNotFound(true);
+        } catch {
+          if (!cancelled) setEbayNotFound(true);
         }
       })
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      .catch((e) => {
+        if (!cancelled) setError(e.message);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [hasNumista, params.numistaId, config.numistaApiKey, config.ebayClientId]);
 
   const checkDuplicate = (): boolean => {
     if (!config.duplicateDetection.enabled) return false;
     const crit = config.duplicateDetection.coinCriteria;
+    const incomingTitle = (data?.title || title).trim().toLowerCase();
     return coins.some((c) => {
-      if (crit === 'numista_id') {
-        return data?.numista_id && c.numista_id === data.numista_id;
-      }
-      if (crit === 'name_year') {
-        return (
-          c.title.toLowerCase() === (data?.title || title).toLowerCase() &&
-          c.year === params.year
-        );
-      }
-      // both
+      const sameTitle = c.title.trim().toLowerCase() === incomingTitle;
+      if (crit === 'numista_id') return !!(data?.numista_id && c.numista_id === data.numista_id);
+      if (crit === 'name_only') return sameTitle;
+      if (crit === 'name_year') return sameTitle && c.year === params.year;
       return (
-        (data?.numista_id && c.numista_id === data.numista_id) ||
-        (c.title.toLowerCase() === (data?.title || title).toLowerCase() &&
-          c.year === params.year)
+        !!(data?.numista_id && c.numista_id === data.numista_id) ||
+        (sameTitle && c.year === params.year)
       );
     });
-  };
-
-  const save = async () => {
-    if (!title.trim()) {
-      Alert.alert('Falta título', 'Introduce un título.');
-      return;
-    }
-    if (checkDuplicate()) {
-      Alert.alert(
-        'Duplicado detectado',
-        '¿Guardar igualmente?',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Guardar', onPress: doSave },
-        ]
-      );
-      return;
-    }
-    await doSave();
   };
 
   const doSave = async () => {
@@ -138,7 +126,7 @@ export const CoinAddConfirmScreen: React.FC = () => {
       ebay_last_price_date: ebayDate,
       ebay_last_price_updated_at: ebayPrice ? now : undefined,
       ebay_price_not_found: ebayNotFound,
-      frontImageUri: params.obverseUri,
+      frontImageUri: params.obverseUri ?? '',
       backImageUri: params.reverseUri,
       officialObverseUrl: data?.officialObverseUrl,
       officialReverseUrl: data?.officialReverseUrl,
@@ -150,94 +138,87 @@ export const CoinAddConfirmScreen: React.FC = () => {
       updatedAt: now,
     };
     await addOrUpdateCoin(item);
+    haptic.success();
     nav.popToTop();
+  };
+
+  const save = async () => {
+    if (!title.trim()) {
+      Alert.alert('Falta título', 'Introduce un título para la moneda.');
+      return;
+    }
+    if (checkDuplicate()) {
+      Alert.alert('Duplicado detectado', 'Ya tienes una moneda similar. ¿Guardar igualmente?', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Guardar', onPress: doSave },
+      ]);
+      return;
+    }
+    await doSave();
   };
 
   if (loading) return <LoadingView label="Descargando ficha y precio…" />;
   if (error) return <ErrorView error={error} onRetry={() => nav.goBack()} />;
 
-  const selectedCondition = condition;
   const selectedCat = config.coinCategories.find((c) => c.id === categoryId);
   const selectedPos = config.possessionStatuses.find((p) => p.id === possessionId);
 
   return (
-    <ScrollView className="flex-1 bg-bg p-3">
-      <Text className="text-white text-xl font-bold mb-3">Confirmar datos</Text>
+    <KeyboardScroll>
+      <Section title="Información">
+        <Field label="Título" value={title} onChangeText={setTitle} />
+        {data && (
+          <Card>
+            <DataRow k="País" v={data.country} />
+            <DataRow k="Año" v={params.year} />
+            {data.denomination ? <DataRow k="Denominación" v={data.denomination} /> : null}
+            {data.composition ? <DataRow k="Composición" v={data.composition} /> : null}
+            {data.weight_g ? <DataRow k="Peso" v={`${data.weight_g} g`} /> : null}
+            {data.diameter_mm ? <DataRow k="Diámetro" v={`${data.diameter_mm} mm`} /> : null}
+            {data.mintage ? <DataRow k="Tirada" v={data.mintage.toLocaleString()} /> : null}
+            {data.rarity ? <DataRow k="Rareza" v={data.rarity} /> : null}
+            {data.numista_typical_value !== undefined ? (
+              <DataRow k="Valor Numista" v={`${data.numista_typical_value} EUR`} />
+            ) : null}
+            {ebayPrice !== undefined ? (
+              <DataRow k="eBay último" v={`${ebayPrice} ${ebayCurrency || 'EUR'}`} last />
+            ) : ebayNotFound ? (
+              <DataRow k="eBay" v="Sin resultados" last />
+            ) : null}
+          </Card>
+        )}
+      </Section>
 
-      <View className="bg-surface p-3 rounded-md mb-2">
-        <Text className="text-muted text-xs mb-1">Título</Text>
-        <TextInput
-          value={title}
-          onChangeText={setTitle}
-          className="text-white text-base"
-        />
-      </View>
-
-      {data && (
-        <View className="bg-surface p-3 rounded-md mb-2">
-          <Row k="País" v={data.country} />
-          <Row k="Año" v={String(params.year)} />
-          {data.denomination ? <Row k="Denominación" v={data.denomination} /> : null}
-          {data.composition ? <Row k="Composición" v={data.composition} /> : null}
-          {data.weight_g ? <Row k="Peso" v={`${data.weight_g} g`} /> : null}
-          {data.diameter_mm ? <Row k="Diámetro" v={`${data.diameter_mm} mm`} /> : null}
-          {data.mintage ? <Row k="Tirada" v={String(data.mintage)} /> : null}
-          {data.rarity ? <Row k="Rareza" v={data.rarity} /> : null}
-          {data.numista_typical_value !== undefined ? (
-            <Row
-              k="Valor Numista (típico)"
-              v={`${data.numista_typical_value} €`}
-            />
-          ) : null}
-          {ebayPrice !== undefined ? (
-            <Row
-              k="eBay último"
-              v={`${ebayPrice} ${ebayCurrency || 'EUR'}`}
-            />
-          ) : ebayNotFound ? (
-            <Row k="eBay" v="Sin resultados" />
-          ) : null}
+      <Section title="Clasificación">
+        <View style={{ gap: 10 }}>
+          <Selector
+            label="Conservación"
+            value={CONDITION_LABEL_ES[condition]}
+            onPress={() => setPickerOpen('condition')}
+          />
+          <Selector
+            label="Categoría"
+            value={selectedCat ? `${selectedCat.emoji} ${selectedCat.name}` : '—'}
+            onPress={() => setPickerOpen('category')}
+          />
+          <Selector
+            label="Posesión"
+            value={selectedPos ? `${selectedPos.emoji} ${selectedPos.name}` : '—'}
+            onPress={() => setPickerOpen('possession')}
+          />
         </View>
-      )}
+      </Section>
 
-      <Selector
-        label="Conservación"
-        value={CONDITION_LABEL_ES[selectedCondition]}
-        onPress={() => setPickerOpen('condition')}
-      />
-      <Selector
-        label="Categoría"
-        value={selectedCat ? `${selectedCat.emoji} ${selectedCat.name}` : '—'}
-        onPress={() => setPickerOpen('category')}
-      />
-      <Selector
-        label="Posesión"
-        value={selectedPos ? `${selectedPos.emoji} ${selectedPos.name}` : '—'}
-        onPress={() => setPickerOpen('possession')}
-      />
+      <Section title="Notas">
+        <Field value={notes} onChangeText={setNotes} multiline placeholder="Opcional…" />
+      </Section>
 
-      <View className="bg-surface p-3 rounded-md mb-3">
-        <Text className="text-muted text-xs mb-1">Notas</Text>
-        <TextInput
-          value={notes}
-          onChangeText={setNotes}
-          multiline
-          placeholder="Opcional"
-          placeholderTextColor="#64748b"
-          className="text-white text-base min-h-[60px]"
-        />
-      </View>
-
-      <PrimaryButton label="Guardar moneda" onPress={save} />
-      <View className="h-16" />
+      <PrimaryButton label="Guardar moneda" onPress={save} size="lg" fullWidth />
 
       <PickerSheet
         title="Conservación"
         open={pickerOpen === 'condition'}
-        options={COIN_CONDITIONS.map((c) => ({
-          value: c,
-          label: CONDITION_LABEL_ES[c],
-        }))}
+        options={COIN_CONDITIONS.map((c) => ({ value: c, label: CONDITION_LABEL_ES[c] }))}
         selectedValue={condition}
         onSelect={(v) => setCondition(v as CoinCondition)}
         onClose={() => setPickerOpen(null)}
@@ -268,26 +249,6 @@ export const CoinAddConfirmScreen: React.FC = () => {
         onSelect={setPossessionId}
         onClose={() => setPickerOpen(null)}
       />
-    </ScrollView>
+    </KeyboardScroll>
   );
 };
-
-const Row: React.FC<{ k: string; v: string }> = ({ k, v }) => (
-  <View className="flex-row mb-1">
-    <Text className="text-muted text-xs flex-1">{k}</Text>
-    <Text className="text-white text-xs">{v}</Text>
-  </View>
-);
-
-const Selector: React.FC<{ label: string; value: string; onPress: () => void }> = ({
-  label,
-  value,
-  onPress,
-}) => (
-  <View className="bg-surface p-3 rounded-md mb-2">
-    <Text className="text-muted text-xs mb-1">{label}</Text>
-    <Text className="text-white text-base" onPress={onPress}>
-      {value} ▾
-    </Text>
-  </View>
-);

@@ -29,10 +29,11 @@ const Stack = createNativeStackNavigator<SettingsStackParamList>();
 export const SettingsNavigator: React.FC = () => (
   <Stack.Navigator
     screenOptions={{
-      headerStyle: { backgroundColor: '#0f172a' },
-      headerTintColor: '#fff',
-      headerTitleStyle: { color: '#fff' },
-      contentStyle: { backgroundColor: '#0f172a' },
+      headerStyle: { backgroundColor: '#0B0B0D' },
+      headerTintColor: '#F4F4F5',
+      headerTitleStyle: { color: '#F4F4F5', fontSize: 17, fontWeight: '600' },
+      headerShadowVisible: false,
+      contentStyle: { backgroundColor: '#0B0B0D' },
     }}
   >
     <Stack.Screen

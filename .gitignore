@@ -11,3 +11,13 @@ npm-debug.*
 web-build/
 .env
 .DS_Store
+
+# Nativos regenerados por `expo prebuild` (lo regenera el workflow de CI)
+android/
+ios/
+
+# Artefactos de build local
+*.apk
+*.aab
+*.keystore
+

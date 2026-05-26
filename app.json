@@ -5,7 +5,6 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
     "splash": {
       "resizeMode": "contain",
       "backgroundColor": "#0f172a"
@@ -39,7 +38,8 @@
         {
           "cameraPermission": "Permitir acceso a la cámara para capturar fotos."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {

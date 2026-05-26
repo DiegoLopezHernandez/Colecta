@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Switch, ScrollView } from 'react-native';
 import { useAppConfig } from '@/context/ConfigContext';
+import { Section } from '@/components/Section';
 import type { CoinFilterKey, ObjectFilterKey } from '@/types';
 
 const COIN_FILTERS: { k: CoinFilterKey; label: string }[] = [
@@ -44,37 +45,68 @@ export const FiltersConfigScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView className="flex-1 bg-bg p-3">
-      <Text className="text-white text-xl font-bold mb-3">Filtros visibles</Text>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: '#0B0B0D' }}
+      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+    >
+      <Section title="Monedas">
+        <SwitchList
+          items={COIN_FILTERS.map((f) => ({
+            key: f.k,
+            label: f.label,
+            value: config.coinVisibleFilters.includes(f.k),
+            onChange: () => toggleCoin(f.k),
+          }))}
+        />
+      </Section>
 
-      <Text className="text-muted text-xs mb-2">Monedas</Text>
-      {COIN_FILTERS.map((f) => (
-        <View
-          key={f.k}
-          className="bg-surface rounded-md p-3 mb-2 flex-row items-center"
-        >
-          <Text className="text-white flex-1">{f.label}</Text>
-          <Switch
-            value={config.coinVisibleFilters.includes(f.k)}
-            onValueChange={() => toggleCoin(f.k)}
-          />
-        </View>
-      ))}
-
-      <Text className="text-muted text-xs mt-4 mb-2">Objetos</Text>
-      {OBJECT_FILTERS.map((f) => (
-        <View
-          key={f.k}
-          className="bg-surface rounded-md p-3 mb-2 flex-row items-center"
-        >
-          <Text className="text-white flex-1">{f.label}</Text>
-          <Switch
-            value={config.objectVisibleFilters.includes(f.k)}
-            onValueChange={() => toggleObject(f.k)}
-          />
-        </View>
-      ))}
-      <View className="h-16" />
+      <Section title="Objetos">
+        <SwitchList
+          items={OBJECT_FILTERS.map((f) => ({
+            key: f.k,
+            label: f.label,
+            value: config.objectVisibleFilters.includes(f.k),
+            onChange: () => toggleObject(f.k),
+          }))}
+        />
+      </Section>
     </ScrollView>
   );
 };
+
+const SwitchList: React.FC<{
+  items: { key: string; label: string; value: boolean; onChange: () => void }[];
+}> = ({ items }) => (
+  <View
+    style={{
+      backgroundColor: '#141417',
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: '#26262B',
+      overflow: 'hidden',
+    }}
+  >
+    {items.map((it, idx) => (
+      <View
+        key={it.key}
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingVertical: 12,
+          paddingHorizontal: 14,
+          borderBottomWidth: idx === items.length - 1 ? 0 : 1,
+          borderBottomColor: '#1C1C20',
+        }}
+      >
+        <Text style={{ color: '#F4F4F5', fontSize: 14, flex: 1 }}>{it.label}</Text>
+        <Switch
+          value={it.value}
+          onValueChange={it.onChange}
+          trackColor={{ false: '#26262B', true: '#D4A24B' }}
+          thumbColor={it.value ? '#F4F4F5' : '#A1A1AA'}
+          ios_backgroundColor="#26262B"
+        />
+      </View>
+    ))}
+  </View>
+);

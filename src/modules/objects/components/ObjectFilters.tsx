@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, Pressable, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TextInput, Pressable } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { useAppConfig } from '@/context/ConfigContext';
+import { Chips } from '@/components/Chips';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { colors } from '@/theme/colors';
 import {
   defaultObjectFilterState,
   type ObjectFilterState,
@@ -14,6 +17,12 @@ interface Props {
   onChange: (s: ObjectFilterState) => void;
 }
 
+const SORT_OPTIONS: { value: ObjectSortKey; label: string }[] = [
+  { value: 'date', label: 'Fecha' },
+  { value: 'name', label: 'Nombre' },
+  { value: 'price', label: 'Precio' },
+];
+
 export const ObjectFilters: React.FC<Props> = ({ state, onChange }) => {
   const { config } = useAppConfig();
   const [expanded, setExpanded] = useState(false);
@@ -22,48 +31,83 @@ export const ObjectFilters: React.FC<Props> = ({ state, onChange }) => {
   const update = (patch: Partial<ObjectFilterState>) =>
     onChange({ ...state, ...patch });
 
+  const [searchLocal, setSearchLocal] = useState(state.search);
+  const debouncedSearch = useDebouncedValue(searchLocal, 200);
+  useEffect(() => {
+    if (debouncedSearch !== state.search) {
+      onChange({ ...state, search: debouncedSearch });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch]);
+  useEffect(() => {
+    if (state.search !== searchLocal && state.search === '') {
+      setSearchLocal('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.search]);
+
   return (
-    <View className="bg-surface rounded-lg p-3 mb-3">
+    <View
+      style={{
+        backgroundColor: colors.surface,
+        borderRadius: 14,
+        borderWidth: 1,
+        borderColor: colors.border,
+        padding: 12,
+        marginBottom: 12,
+      }}
+    >
       {has('search') && (
         <TextInput
-          value={state.search}
-          onChangeText={(v) => update({ search: v })}
-          placeholder="🔍 Buscar..."
-          placeholderTextColor="#64748b"
-          className="bg-bg text-white px-3 py-2 rounded-md mb-2"
+          value={searchLocal}
+          onChangeText={setSearchLocal}
+          placeholder="Buscar…"
+          placeholderTextColor={colors.textSubtle}
+          autoCorrect={false}
+          autoCapitalize="none"
+          returnKeyType="search"
+          style={{
+            backgroundColor: colors.surface2,
+            borderWidth: 1,
+            borderColor: colors.border,
+            color: colors.text,
+            fontSize: 14,
+            paddingHorizontal: 12,
+            paddingVertical: 9,
+            borderRadius: 10,
+            marginBottom: 10,
+          }}
         />
       )}
-      <View className="flex-row items-center mb-2">
-        <Text className="text-muted text-xs flex-1">
-          Orden: {labelSort(state.sort)} {state.sortDir === 'asc' ? '↑' : '↓'}
+      <View
+        style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}
+      >
+        <Text style={{ color: colors.textMuted, fontSize: 12, flex: 1 }}>
+          Orden:{' '}
+          <Text style={{ color: colors.text }}>{labelSort(state.sort)}</Text>{' '}
+          {state.sortDir === 'asc' ? '↑' : '↓'}
         </Text>
-        <Pressable onPress={() => setExpanded((v) => !v)}>
-          <Text className="text-primary text-xs">
-            {expanded ? 'Ocultar' : 'Más filtros'}
+        <Pressable onPress={() => setExpanded((v) => !v)} hitSlop={8}>
+          <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>
+            {expanded ? 'Ocultar filtros' : 'Más filtros'}
           </Text>
         </Pressable>
       </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {(['date', 'name', 'price'] as ObjectSortKey[]).map((k) => (
-          <Pressable
-            key={k}
-            onPress={() =>
-              update({
-                sort: k,
-                sortDir:
-                  state.sort === k && state.sortDir === 'desc' ? 'asc' : 'desc',
-              })
-            }
-            className={`px-3 py-1 rounded-full mr-2 ${
-              state.sort === k ? 'bg-primary' : 'bg-bg'
-            }`}
-          >
-            <Text className="text-white text-xs">{labelSort(k)}</Text>
-          </Pressable>
-        ))}
-      </ScrollView>
+      <Chips
+        toggleable={false}
+        value={state.sort}
+        options={SORT_OPTIONS}
+        onChange={(v) =>
+          v &&
+          update({
+            sort: v as ObjectSortKey,
+            sortDir:
+              state.sort === v && state.sortDir === 'desc' ? 'asc' : 'desc',
+          })
+        }
+      />
       {expanded && (
-        <View className="mt-3">
+        <View style={{ marginTop: 4 }}>
           {has('type') && (
             <Chips
               label="Tipo"
@@ -98,26 +142,54 @@ export const ObjectFilters: React.FC<Props> = ({ state, onChange }) => {
             />
           )}
           {has('priceRange') && (
-            <View className="mt-2">
-              <Text className="text-muted text-xs">
-                Precio máx: {state.priceMax ?? 1000} €
+            <View style={{ marginTop: 10 }}>
+              <Text
+                style={{
+                  color: colors.textSubtle,
+                  fontSize: 11,
+                  fontWeight: '600',
+                  letterSpacing: 0.5,
+                  textTransform: 'uppercase',
+                }}
+              >
+                {state.priceMax === undefined
+                  ? 'Precio máx: sin límite'
+                  : `Precio máx: ${state.priceMax} €`}
               </Text>
               <Slider
                 minimumValue={0}
                 maximumValue={1000}
                 step={10}
                 value={state.priceMax ?? 1000}
-                onValueChange={(v) => update({ priceMax: v })}
-                minimumTrackTintColor="#3b82f6"
-                maximumTrackTintColor="#334155"
+                onSlidingComplete={(v) =>
+                  update({ priceMax: v >= 1000 ? undefined : v })
+                }
+                minimumTrackTintColor={colors.primary}
+                maximumTrackTintColor={colors.border}
+                thumbTintColor={colors.primary}
               />
             </View>
           )}
           <Pressable
-            onPress={() => onChange(defaultObjectFilterState)}
-            className="bg-surface2 py-2 rounded-md mt-3 items-center"
+            onPress={() => {
+              setSearchLocal('');
+              onChange(defaultObjectFilterState);
+            }}
+            accessibilityRole="button"
+            style={({ pressed }) => ({
+              backgroundColor: colors.surface2,
+              borderWidth: 1,
+              borderColor: colors.border,
+              paddingVertical: 10,
+              borderRadius: 10,
+              alignItems: 'center',
+              marginTop: 12,
+              opacity: pressed ? 0.7 : 1,
+            })}
           >
-            <Text className="text-white">Limpiar filtros</Text>
+            <Text style={{ color: colors.text, fontSize: 13, fontWeight: '500' }}>
+              Limpiar filtros
+            </Text>
           </Pressable>
         </View>
       )}
@@ -128,27 +200,3 @@ export const ObjectFilters: React.FC<Props> = ({ state, onChange }) => {
 function labelSort(k: ObjectSortKey): string {
   return { date: 'Fecha', name: 'Nombre', price: 'Precio' }[k];
 }
-
-const Chips: React.FC<{
-  label: string;
-  value?: string;
-  options: { value: string; label: string }[];
-  onChange: (v: string | undefined) => void;
-}> = ({ label, value, options, onChange }) => (
-  <View className="mb-2">
-    <Text className="text-muted text-xs mb-1">{label}</Text>
-    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-      {options.map((o) => (
-        <Pressable
-          key={o.value}
-          onPress={() => onChange(value === o.value ? undefined : o.value)}
-          className={`px-3 py-1 rounded-full mr-2 ${
-            value === o.value ? 'bg-primary' : 'bg-bg'
-          }`}
-        >
-          <Text className="text-white text-xs">{o.label}</Text>
-        </Pressable>
-      ))}
-    </ScrollView>
-  </View>
-);

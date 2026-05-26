@@ -1,0 +1,79 @@
+name: Build Android APK
+
+# Lanza el build en cada push a main y manualmente desde la pestaña "Actions".
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # necesario para publicar el APK como Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install npm dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Expo prebuild (Android)
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Build Debug APK
+        working-directory: android
+        # Usamos assembleDebug porque viene firmado con el debug.keystore que
+        # Gradle genera automáticamente — no requiere configurar credenciales
+        # de firmado. La app funciona idéntico; solo pesa un poco más que un
+        # release minificado (irrelevante para uso personal).
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/debug/*.apk out/AppMovilNumismatica-${{ github.run_number }}.apk
+          ls -la out/
+
+      - name: Upload APK as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AppMovilNumismatica-apk-${{ github.run_number }}
+          path: out/*.apk
+          retention-days: 30
+
+      # Crea un Release en GitHub con el APK adjunto (tag = run number).
+      # Así desde la pestaña Releases puedes bajar el APK directamente con el móvil.
+      - name: Create GitHub Release
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: Build ${{ github.run_number }}
+          body: |
+            Build automático generado desde commit ${{ github.sha }}.
+            Descarga el APK adjunto e instálalo en tu móvil Android.
+          files: out/*.apk
+          draft: false
+          prerelease: false

@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { newId } from '@/utils/id';
+import { PrimaryButton } from '@/components/PrimaryButton';
 
 export interface ListEntry {
   id: string;
@@ -25,16 +26,16 @@ interface Props {
 }
 
 const PALETTE = [
-  '#3b82f6',
-  '#22c55e',
-  '#ef4444',
-  '#f59e0b',
-  '#a855f7',
-  '#ec4899',
-  '#14b8a6',
-  '#eab308',
-  '#06b6d4',
-  '#f97316',
+  '#D4A24B',
+  '#4ADE80',
+  '#F87171',
+  '#FBBF24',
+  '#C084FC',
+  '#F472B6',
+  '#2DD4BF',
+  '#FCD34D',
+  '#22D3EE',
+  '#FB923C',
 ];
 
 export const EditableListEditor: React.FC<Props> = ({
@@ -86,25 +87,74 @@ export const EditableListEditor: React.FC<Props> = ({
     onChange(entries.map((e) => (e.id === id ? { ...e, name } : e)));
 
   return (
-    <View className="flex-1">
-      <Text className="text-white text-xl font-bold mb-3">{title}</Text>
-      <ScrollView className="mb-3">
+    <View style={{ flex: 1, backgroundColor: '#0B0B0D' }}>
+      <Text
+        style={{
+          color: '#F4F4F5',
+          fontSize: 22,
+          fontWeight: '700',
+          letterSpacing: -0.3,
+          marginBottom: 16,
+        }}
+      >
+        {title}
+      </Text>
+
+      <ScrollView style={{ flex: 1, marginBottom: 12 }} showsVerticalScrollIndicator={false}>
         {entries.map((e, i) => (
-          <View key={e.id} className="bg-surface rounded-md p-3 mb-2 flex-row items-center">
+          <View
+            key={e.id}
+            style={{
+              backgroundColor: '#141417',
+              borderWidth: 1,
+              borderColor: '#26262B',
+              borderRadius: 12,
+              padding: 10,
+              marginBottom: 8,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 8,
+            }}
+          >
             {withEmoji ? (
               <TextInput
                 value={e.emoji ?? ''}
                 onChangeText={(v) =>
-                  onChange(entries.map((x) => (x.id === e.id ? { ...x, emoji: v } : x)))
+                  onChange(
+                    entries.map((x) =>
+                      x.id === e.id ? { ...x, emoji: v } : x
+                    )
+                  )
                 }
-                className="bg-bg text-white text-lg px-2 py-1 rounded-md mr-2 w-12 text-center"
+                style={{
+                  width: 44,
+                  textAlign: 'center',
+                  backgroundColor: '#1C1C20',
+                  color: '#F4F4F5',
+                  fontSize: 18,
+                  paddingVertical: 6,
+                  borderRadius: 8,
+                  borderWidth: 1,
+                  borderColor: '#26262B',
+                }}
                 maxLength={3}
               />
             ) : null}
             <TextInput
               value={e.name}
               onChangeText={(v) => updateName(e.id, v)}
-              className="flex-1 bg-bg text-white px-2 py-1 rounded-md mr-2"
+              placeholderTextColor="#71717A"
+              style={{
+                flex: 1,
+                backgroundColor: '#1C1C20',
+                color: '#F4F4F5',
+                fontSize: 14,
+                paddingHorizontal: 10,
+                paddingVertical: 8,
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: '#26262B',
+              }}
             />
             {withColor ? (
               <Pressable
@@ -124,72 +174,142 @@ export const EditableListEditor: React.FC<Props> = ({
                     )
                   )
                 }
-                style={{ backgroundColor: e.color ?? '#475569' }}
-                className="w-6 h-6 rounded-full mr-2"
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 14,
+                  backgroundColor: e.color ?? '#475569',
+                  borderWidth: 2,
+                  borderColor: '#26262B',
+                }}
               />
             ) : null}
-            <Pressable onPress={() => move(e.id, -1)} disabled={i === 0} className="px-2">
-              <Text className={`text-lg ${i === 0 ? 'text-surface2' : 'text-white'}`}>▲</Text>
-            </Pressable>
-            <Pressable
+            <IconBtn
+              symbol="▲"
+              onPress={() => move(e.id, -1)}
+              disabled={i === 0}
+            />
+            <IconBtn
+              symbol="▼"
               onPress={() => move(e.id, 1)}
               disabled={i === entries.length - 1}
-              className="px-2"
-            >
-              <Text
-                className={`text-lg ${
-                  i === entries.length - 1 ? 'text-surface2' : 'text-white'
-                }`}
-              >
-                ▼
-              </Text>
-            </Pressable>
-            <Pressable onPress={() => remove(e.id)} className="px-2">
-              <Text className="text-err">🗑</Text>
-            </Pressable>
+            />
+            <IconBtn symbol="🗑" onPress={() => remove(e.id)} />
           </View>
         ))}
       </ScrollView>
 
-      <View className="bg-surface rounded-md p-3">
-        <Text className="text-white font-semibold mb-2">Añadir nuevo</Text>
-        <View className="flex-row mb-2">
+      <View
+        style={{
+          backgroundColor: '#141417',
+          borderWidth: 1,
+          borderColor: '#26262B',
+          borderRadius: 14,
+          padding: 12,
+        }}
+      >
+        <Text
+          style={{
+            color: '#71717A',
+            fontSize: 11,
+            fontWeight: '600',
+            letterSpacing: 0.6,
+            textTransform: 'uppercase',
+            marginBottom: 10,
+          }}
+        >
+          Añadir nuevo
+        </Text>
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
           {withEmoji ? (
             <TextInput
               value={newEmoji}
               onChangeText={setNewEmoji}
               placeholder="🆕"
-              placeholderTextColor="#64748b"
+              placeholderTextColor="#71717A"
               maxLength={3}
-              className="bg-bg text-white text-lg px-2 py-1 rounded-md mr-2 w-12 text-center"
+              style={{
+                width: 48,
+                textAlign: 'center',
+                backgroundColor: '#1C1C20',
+                color: '#F4F4F5',
+                fontSize: 18,
+                paddingVertical: 9,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: '#26262B',
+              }}
             />
           ) : null}
           <TextInput
             value={newName}
             onChangeText={setNewName}
             placeholder="Nombre"
-            placeholderTextColor="#64748b"
-            className="flex-1 bg-bg text-white px-2 py-1 rounded-md"
+            placeholderTextColor="#71717A"
+            style={{
+              flex: 1,
+              backgroundColor: '#1C1C20',
+              color: '#F4F4F5',
+              fontSize: 14,
+              paddingHorizontal: 12,
+              paddingVertical: 9,
+              borderRadius: 10,
+              borderWidth: 1,
+              borderColor: '#26262B',
+            }}
           />
         </View>
         {withColor && (
-          <ScrollView horizontal className="mb-2">
-            {PALETTE.map((c) => (
-              <Pressable
-                key={c}
-                onPress={() => setNewColor(c)}
-                style={{ backgroundColor: c }}
-                className={`w-7 h-7 rounded-full mr-2 ${
-                  newColor === c ? 'border-2 border-white' : ''
-                }`}
-              />
-            ))}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 8, marginBottom: 12 }}
+          >
+            {PALETTE.map((c) => {
+              const selected = newColor === c;
+              return (
+                <Pressable
+                  key={c}
+                  onPress={() => setNewColor(c)}
+                  style={{
+                    width: 30,
+                    height: 30,
+                    borderRadius: 15,
+                    backgroundColor: c,
+                    borderWidth: 2,
+                    borderColor: selected ? '#F4F4F5' : 'transparent',
+                  }}
+                />
+              );
+            })}
           </ScrollView>
         )}
-        <Pressable onPress={add} className="bg-primary py-2 rounded-md items-center">
-          <Text className="text-white font-semibold">Añadir</Text>
-        </Pressable>
+        <PrimaryButton label="Añadir" onPress={add} fullWidth />
       </View>
     </View>
   );
 };
+
+const IconBtn: React.FC<{
+  symbol: string;
+  onPress: () => void;
+  disabled?: boolean;
+}> = ({ symbol, onPress, disabled }) => (
+  <Pressable
+    onPress={onPress}
+    disabled={disabled}
+    style={({ pressed }) => ({
+      width: 30,
+      height: 30,
+      borderRadius: 8,
+      backgroundColor: '#1C1C20',
+      borderWidth: 1,
+      borderColor: '#26262B',
+      alignItems: 'center',
+      justifyContent: 'center',
+      opacity: disabled ? 0.35 : pressed ? 0.6 : 1,
+    })}
+  >
+    <Text style={{ color: '#F4F4F5', fontSize: 13 }}>{symbol}</Text>
+  </Pressable>
+);

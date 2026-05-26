@@ -1,31 +1,37 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, Pressable, ScrollView } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import type { NativeStackNavigationProp, RouteProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { searchCandidates, NumistaError } from '@/services/numistaService';
-import { rankByVisualSimilarity } from '@/services/imageMatchService';
 import { useAppConfig } from '@/context/ConfigContext';
 import { LoadingView } from '@/components/LoadingView';
 import { ErrorView } from '@/components/ErrorView';
+import { Card } from '@/components/Card';
+import { PrimaryButton } from '@/components/PrimaryButton';
+import { colors } from '@/theme/colors';
+import { haptic } from '@/utils/haptics';
 import type { CoinsStackParamList } from '../navigation/CoinsNavigator';
 import type { NumistaCandidate } from '@/types';
 
 type Nav = NativeStackNavigationProp<CoinsStackParamList, 'AddIdentify'>;
 type RouteT = RouteProp<CoinsStackParamList, 'AddIdentify'>;
 
-interface Ranked {
-  candidate: NumistaCandidate;
-  hammingDistance: number;
-  confidence: number;
-}
-
+/**
+ * Lista de candidatos de Numista para que el usuario elija.
+ *
+ * Se eliminó el "ranking visual por similitud" anterior porque comparaba bytes
+ * del JPEG, no píxeles, y reportaba un porcentaje engañoso al usuario. Los
+ * candidatos se muestran tal cual los devuelve Numista, ya están ordenados por
+ * proximidad de año en el servicio.
+ */
 export const CoinAddIdentifyScreen: React.FC = () => {
   const nav = useNavigation<Nav>();
   const { params } = useRoute<RouteT>();
   const { config } = useAppConfig();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [results, setResults] = useState<Ranked[]>([]);
+  const [results, setResults] = useState<NumistaCandidate[]>([]);
 
   const run = async () => {
     setLoading(true);
@@ -34,18 +40,10 @@ export const CoinAddIdentifyScreen: React.FC = () => {
       const cands = await searchCandidates(
         config.numistaApiKey,
         params.countryCode,
-        params.year
+        params.year,
+        params.query,
       );
-      if (cands.length === 0) {
-        setResults([]);
-        return;
-      }
-      const ranked = await rankByVisualSimilarity(
-        params.obverseUri,
-        params.reverseUri,
-        cands
-      );
-      setResults(ranked.slice(0, 3));
+      setResults(cands.slice(0, 15));
     } catch (e) {
       if (e instanceof NumistaError) setError(e.message);
       else setError((e as Error).message);
@@ -59,77 +57,131 @@ export const CoinAddIdentifyScreen: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading) return <LoadingView label="Consultando Numista y comparando imágenes…" />;
+  const goToConfirm = (numistaId: number) => {
+    haptic.light();
+    nav.replace('AddConfirm', {
+      numistaId,
+      obverseUri: params.obverseUri,
+      reverseUri: params.reverseUri,
+      countryCode: params.countryCode,
+      countryName: params.countryName,
+      year: params.year,
+    });
+  };
+
+  const goWithoutNumista = () => {
+    nav.replace('AddConfirm', {
+      obverseUri: params.obverseUri,
+      reverseUri: params.reverseUri,
+      countryCode: params.countryCode,
+      countryName: params.countryName,
+      year: params.year,
+    });
+  };
+
+  if (loading) return <LoadingView label="Buscando en Numista…" />;
   if (error) return <ErrorView error={error} onRetry={run} />;
 
   return (
-    <ScrollView className="flex-1 bg-bg p-3">
-      <Text className="text-white text-xl font-bold mb-2">Candidatos</Text>
-      <Text className="text-muted text-xs mb-3">
-        Top 3 ordenados por similitud visual. Pulsa el que coincida.
+    <ScrollView
+      style={{ flex: 1, backgroundColor: colors.bg }}
+      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+    >
+      <Text style={{ color: colors.text, fontSize: 22, fontWeight: '700', letterSpacing: -0.3 }}>
+        Candidatos
+      </Text>
+      <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 4, marginBottom: 18 }}>
+        {results.length === 0
+          ? `Sin resultados para ${params.countryName} · ${params.year}.`
+          : `${results.length} ${results.length === 1 ? 'moneda encontrada' : 'monedas encontradas'}. Pulsa la que corresponda.`}
       </Text>
 
       {results.length === 0 ? (
-        <View className="bg-surface p-4 rounded-lg">
-          <Text className="text-white">
-            No se encontraron monedas para {params.countryName} en {params.year}.
+        <Card>
+          <Text style={{ color: colors.text, fontSize: 15, marginBottom: 12 }}>
+            No se encontraron monedas en Numista para {params.countryName} en {params.year}.
           </Text>
-          <Pressable
-            onPress={() =>
-              nav.replace('AddConfirm', {
-                manual: true,
-                obverseUri: params.obverseUri,
-                reverseUri: params.reverseUri,
-                countryCode: params.countryCode,
-                countryName: params.countryName,
-                year: params.year,
-              })
-            }
-            className="bg-primary py-2 rounded-md mt-3 items-center"
-          >
-            <Text className="text-white font-semibold">Añadir manualmente</Text>
-          </Pressable>
-        </View>
+          <PrimaryButton label="Guardar sin Numista" onPress={goWithoutNumista} />
+        </Card>
       ) : (
-        results.map((r) => (
-          <Pressable
-            key={r.candidate.numista_id}
-            onPress={() =>
-              nav.replace('AddConfirm', {
-                manual: false,
-                numistaId: r.candidate.numista_id,
-                obverseUri: params.obverseUri,
-                reverseUri: params.reverseUri,
-                countryCode: params.countryCode,
-                countryName: params.countryName,
-                year: params.year,
-              })
-            }
-            className="bg-surface rounded-lg p-3 mb-3 flex-row"
-          >
-            {r.candidate.obverse_thumb ? (
-              <Image
-                source={{ uri: r.candidate.obverse_thumb }}
-                className="w-20 h-20 rounded-md mr-3"
-              />
-            ) : (
-              <View className="w-20 h-20 rounded-md bg-surface2 mr-3 items-center justify-center">
-                <Text className="text-3xl">🪙</Text>
+        <>
+          {results.map((c) => (
+            <Pressable
+              key={c.numista_id}
+              onPress={() => goToConfirm(c.numista_id)}
+              accessibilityRole="button"
+              accessibilityLabel={c.title}
+              style={({ pressed }) => ({
+                backgroundColor: colors.surface,
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 14,
+                padding: 12,
+                marginBottom: 10,
+                flexDirection: 'row',
+                opacity: pressed ? 0.7 : 1,
+              })}
+            >
+              {c.obverse_thumb ? (
+                <Image
+                  source={{ uri: c.obverse_thumb }}
+                  style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: 10,
+                    marginRight: 12,
+                    backgroundColor: colors.surface2,
+                  }}
+                  resizeMode="contain"
+                />
+              ) : (
+                <View
+                  style={{
+                    width: 80,
+                    height: 80,
+                    borderRadius: 10,
+                    backgroundColor: colors.surface2,
+                    marginRight: 12,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{ fontSize: 28 }}>🪙</Text>
+                </View>
+              )}
+              <View style={{ flex: 1, justifyContent: 'center' }}>
+                <Text
+                  style={{ color: colors.text, fontSize: 14, fontWeight: '600' }}
+                  numberOfLines={2}
+                >
+                  {c.title}
+                </Text>
+                <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 2 }}>
+                  {c.country} · {c.year}
+                </Text>
               </View>
-            )}
-            <View className="flex-1">
-              <Text className="text-white font-semibold" numberOfLines={2}>
-                {r.candidate.title}
-              </Text>
-              <Text className="text-muted text-xs">
-                {r.candidate.country} · {r.candidate.year}
-              </Text>
-              <Text className="text-primary text-xs mt-1">
-                Similitud {r.confidence}% (d={r.hammingDistance.toFixed(0)})
-              </Text>
-            </View>
+            </Pressable>
+          ))}
+
+          <Pressable
+            onPress={goWithoutNumista}
+            accessibilityRole="button"
+            style={({ pressed }) => ({
+              marginTop: 8,
+              paddingVertical: 12,
+              borderRadius: 10,
+              backgroundColor: colors.surface2,
+              borderWidth: 1,
+              borderColor: colors.border,
+              alignItems: 'center',
+              opacity: pressed ? 0.7 : 1,
+            })}
+          >
+            <Text style={{ color: colors.textMuted, fontSize: 14, fontWeight: '500' }}>
+              Ninguna coincide — guardar sin Numista
+            </Text>
           </Pressable>
-        ))
+        </>
       )}
     </ScrollView>
   );

@@ -35,7 +35,7 @@ export type ObjectFilterKey =
   | 'possessionStatus'
   | 'priceRange';
 
-export type CoinDuplicateCriteria = 'numista_id' | 'name_year' | 'both';
+export type CoinDuplicateCriteria = 'numista_id' | 'name_only' | 'name_year' | 'both';
 export type ObjectDuplicateCriteria = 'exact' | 'similar';
 
 export interface DuplicateDetectionConfig {

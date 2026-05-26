@@ -66,7 +66,7 @@ export const buildDefaultConfig = (): AppConfig => ({
   ],
   duplicateDetection: {
     enabled: true,
-    coinCriteria: 'numista_id',
+    coinCriteria: 'name_only',
     objectCriteria: 'exact',
     similarityThreshold: 80,
   },

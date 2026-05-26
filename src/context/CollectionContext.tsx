@@ -17,6 +17,7 @@ import {
   saveObjects,
   deleteObject as deleteObjectFromStore,
 } from '@/storage/objectStorage';
+import { deletePersistedPhoto } from '@/utils/image';
 
 interface CollectionCtx {
   coins: CoinItem[];
@@ -32,6 +33,17 @@ interface CollectionCtx {
 
 const Ctx = createContext<CollectionCtx | null>(null);
 
+/**
+ * Provider de la colección.
+ *
+ * Cambios clave de rendimiento:
+ *   - Todas las callbacks usan setter funcional (`setCoins(prev => …)`) y NO
+ *     dependen del estado, por lo que su identidad es estable entre renders.
+ *     Esto evita que cada consumidor del context se vuelva a memoizar en cada
+ *     cambio de la colección.
+ *   - Al borrar un item se intentan eliminar también sus fotos persistidas
+ *     para no dejar basura en el almacenamiento.
+ */
 export const CollectionProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -52,36 +64,49 @@ export const CollectionProvider: React.FC<{ children: React.ReactNode }> = ({
     })();
   }, [reload]);
 
-  const addOrUpdateCoin = useCallback(
-    async (c: CoinItem) => {
-      const idx = coins.findIndex((x) => x.id === c.id);
-      const next = [...coins];
-      if (idx >= 0) next[idx] = c;
-      else next.unshift(c);
-      setCoins(next);
-      await saveCoins(next);
-    },
-    [coins]
-  );
+  const addOrUpdateCoin = useCallback(async (c: CoinItem) => {
+    let next: CoinItem[] = [];
+    setCoins((prev) => {
+      const idx = prev.findIndex((x) => x.id === c.id);
+      next = idx >= 0 ? prev.map((x, i) => (i === idx ? c : x)) : [c, ...prev];
+      return next;
+    });
+    await saveCoins(next);
+  }, []);
 
   const removeCoin = useCallback(async (id: string) => {
+    // Limpieza de fotos asociadas (no bloqueante)
+    setCoins((prev) => {
+      const target = prev.find((x) => x.id === id);
+      if (target) {
+        void deletePersistedPhoto(target.frontImageUri);
+        void deletePersistedPhoto(target.backImageUri);
+      }
+      return prev;
+    });
     const next = await deleteCoinFromStore(id);
     setCoins(next);
   }, []);
 
-  const addOrUpdateObject = useCallback(
-    async (o: ObjectItem) => {
-      const idx = objects.findIndex((x) => x.id === o.id);
-      const next = [...objects];
-      if (idx >= 0) next[idx] = o;
-      else next.unshift(o);
-      setObjects(next);
-      await saveObjects(next);
-    },
-    [objects]
-  );
+  const addOrUpdateObject = useCallback(async (o: ObjectItem) => {
+    let next: ObjectItem[] = [];
+    setObjects((prev) => {
+      const idx = prev.findIndex((x) => x.id === o.id);
+      next = idx >= 0 ? prev.map((x, i) => (i === idx ? o : x)) : [o, ...prev];
+      return next;
+    });
+    await saveObjects(next);
+  }, []);
 
   const removeObject = useCallback(async (id: string) => {
+    setObjects((prev) => {
+      const target = prev.find((x) => x.id === id);
+      if (target) {
+        void deletePersistedPhoto(target.frontImageUri);
+        void deletePersistedPhoto(target.backImageUri);
+      }
+      return prev;
+    });
     const next = await deleteObjectFromStore(id);
     setObjects(next);
   }, []);

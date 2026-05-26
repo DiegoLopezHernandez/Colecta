@@ -7,7 +7,7 @@ import type { Category } from '@/types';
 export const CoinCategoriesScreen: React.FC = () => {
   const { config, patchConfig } = useAppConfig();
   return (
-    <View className="flex-1 bg-bg p-3">
+    <View style={{ flex: 1, backgroundColor: '#0B0B0D', padding: 16 }}>
       <EditableListEditor
         title="Categorías de monedas"
         entries={config.coinCategories}

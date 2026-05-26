@@ -3,25 +3,22 @@
  * Devuelve listings VENDIDOS (sold/completed) reales.
  *
  * Auth: solo App ID (alias del Client ID, no requiere Client Secret).
- * Endpoint: https://svcs.ebay.com/services/search/FindingService/v1
- * Operación principal: findCompletedItems con filter SoldItemsOnly=true.
- * Fallback automático: findItemsAdvanced (activos) si findCompletedItems no
- * está disponible para la cuenta.
+ * Endpoint produccion: https://svcs.ebay.com/services/search/FindingService/v1
+ * Endpoint sandbox:    https://svcs.sandbox.ebay.com/services/search/FindingService/v1
  *
- * Marketplace por defecto: EBAY-ES (España, EUR).
+ * La deteccion sandbox/produccion es automatica: si el App ID contiene "SBX"
+ * se usa el endpoint sandbox; en caso contrario, el de produccion.
  */
 export type EbayPriceSource = 'sold' | 'active' | 'none';
 
 export interface EbayPriceResult {
   price: number;
   currency: string;
-  endDate?: string; // ISO. Sólo para sold; en active, fecha de listado.
+  endDate?: string; // ISO. Solo para sold; en active, fecha de listado.
   itemUrl?: string;
   title?: string;
   source: EbayPriceSource;
 }
-
-const FINDING_ENDPOINT = 'https://svcs.ebay.com/services/search/FindingService/v1';
 
 export class EbayError extends Error {
   status?: number;
@@ -29,6 +26,25 @@ export class EbayError extends Error {
     super(msg);
     this.status = status;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers internos
+// ---------------------------------------------------------------------------
+
+function isSandbox(appId: string): boolean {
+  return appId.toUpperCase().includes('SBX');
+}
+
+function findingEndpoint(appId: string): string {
+  return isSandbox(appId)
+    ? 'https://svcs.sandbox.ebay.com/services/search/FindingService/v1'
+    : 'https://svcs.ebay.com/services/search/FindingService/v1';
+}
+
+/** Devuelve true si el App ID parece ser de Sandbox (util para avisar al usuario). */
+export function detectSandbox(appId: string): boolean {
+  return isSandbox(appId);
 }
 
 function commonHeaders(appId: string, operation: string, globalId: string) {
@@ -90,7 +106,6 @@ function extractFromResponse(json: FindingResponse, opName: string): EbayPriceRe
   }
   const items = r.searchResult?.[0]?.item;
   if (!items || items.length === 0) return null;
-  // Tomar la primera (más reciente por EndTimeSoonest)
   const it = items[0]!;
   const ss = it.sellingStatus?.[0];
   const price = ss?.currentPrice?.[0] ?? ss?.convertedCurrentPrice?.[0];
@@ -103,35 +118,41 @@ function extractFromResponse(json: FindingResponse, opName: string): EbayPriceRe
     endDate: it.listingInfo?.[0]?.endTime?.[0],
     itemUrl: it.viewItemURL?.[0],
     title: it.title?.[0],
-    source: 'none', // se asigna por quien llama
+    source: 'none',
   };
 }
 
+// ---------------------------------------------------------------------------
+// API publica
+// ---------------------------------------------------------------------------
+
 /**
- * Verifica si las credenciales eBay son válidas haciendo una llamada mínima
- * a findItemsAdvanced (siempre disponible para cualquier App ID válido).
+ * Verifica si las credenciales eBay son validas.
+ * Con claves Sandbox, verifica contra el endpoint sandbox.
  */
 export async function verifyCredentials(
   appId: string,
   globalId = 'EBAY-ES'
 ): Promise<boolean> {
   if (!appId) return false;
-  const url = `${FINDING_ENDPOINT}?${buildQuery('findItemsAdvanced', 'test', {
+  const endpoint = findingEndpoint(appId);
+  const url = `${endpoint}?${buildQuery('findItemsAdvanced', 'coin', {
     entriesPerPage: 1,
   })}`;
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: commonHeaders(appId, 'findItemsAdvanced', globalId),
-  });
-  return res.ok;
+  try {
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: commonHeaders(appId, 'findItemsAdvanced', globalId),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
 /**
- * Consulta el último precio vendido. Si findCompletedItems falla
- * (típicamente porque la App no tiene acceso a SoldItemsOnly),
- * hace fallback a findItemsAdvanced (precio de listado activo).
- *
- * Devuelve null si no hay resultados en ninguna ruta.
+ * Consulta el ultimo precio vendido/activo en eBay.
+ * Detecta automaticamente si es cuenta Sandbox y usa el endpoint correcto.
  */
 export async function fetchLastPrice(
   appId: string,
@@ -141,9 +162,11 @@ export async function fetchLastPrice(
   if (!appId) throw new EbayError('Falta el App ID de eBay (Client ID).');
   if (!keywords || !keywords.trim()) return null;
 
+  const endpoint = findingEndpoint(appId);
+
   // 1) Intentar findCompletedItems con SoldItemsOnly
   try {
-    const url = `${FINDING_ENDPOINT}?${buildQuery('findCompletedItems', keywords, {
+    const url = `${endpoint}?${buildQuery('findCompletedItems', keywords, {
       soldOnly: true,
       entriesPerPage: 5,
     })}`;
@@ -162,7 +185,7 @@ export async function fetchLastPrice(
 
   // 2) Fallback a findItemsAdvanced (precio activo)
   try {
-    const url = `${FINDING_ENDPOINT}?${buildQuery('findItemsAdvanced', keywords, {
+    const url = `${endpoint}?${buildQuery('findItemsAdvanced', keywords, {
       entriesPerPage: 5,
     })}`;
     const res = await fetch(url, {
@@ -184,7 +207,7 @@ export async function fetchLastPrice(
 }
 
 /**
- * Búsqueda con varios resultados para "Optional visual match" del módulo Objects.
+ * Busqueda con varios resultados para el modulo Objects.
  */
 export async function searchListings(
   appId: string,
@@ -195,13 +218,14 @@ export async function searchListings(
   Array<{ title: string; price: number; currency: string; itemUrl?: string; imageUrl?: string }>
 > {
   if (!appId) throw new EbayError('Falta el App ID de eBay (Client ID).');
+  const endpoint = findingEndpoint(appId);
   const params = new URLSearchParams();
   params.set('keywords', keywords);
   params.set('paginationInput.entriesPerPage', String(limit));
   params.set('sortOrder', 'BestMatch');
   params.set('outputSelector(0)', 'PictureURLLarge');
   params.set('outputSelector(1)', 'GalleryInfo');
-  const url = `${FINDING_ENDPOINT}?${params.toString()}`;
+  const url = `${endpoint}?${params.toString()}`;
   const res = await fetch(url, {
     method: 'GET',
     headers: commonHeaders(appId, 'findItemsAdvanced', globalId),

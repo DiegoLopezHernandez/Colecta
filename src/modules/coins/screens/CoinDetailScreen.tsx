@@ -1,14 +1,24 @@
-import React, { useState } from 'react';
-import { View, Text, Image, ScrollView, Alert, Pressable } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  View, Text, Image, ScrollView, Alert, Pressable,
+} from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import type { NativeStackNavigationProp, RouteProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
+import type { RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCollection } from '@/context/CollectionContext';
 import { useAppConfig } from '@/context/ConfigContext';
 import { fetchLastPrice } from '@/services/ebayService';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Badge } from '@/components/Badge';
+import { Card } from '@/components/Card';
+import { Section } from '@/components/Section';
+import { DataRow } from '@/components/DataRow';
+import { ImageZoomViewer } from '@/components/ImageZoomViewer';
 import { formatCurrency, formatDate, percentDiff, formatPercent } from '@/utils/format';
 import { CONDITION_LABEL_ES, RARITY_LABEL_ES } from '@/utils/conditions';
+import { colors } from '@/theme/colors';
+import { haptic } from '@/utils/haptics';
 import type { CoinsStackParamList } from '../navigation/CoinsNavigator';
 
 type Nav = NativeStackNavigationProp<CoinsStackParamList, 'CoinDetail'>;
@@ -19,14 +29,60 @@ export const CoinDetailScreen: React.FC = () => {
   const { params } = useRoute<RouteT>();
   const { coins, addOrUpdateCoin, removeCoin } = useCollection();
   const { config } = useAppConfig();
-  const coin = coins.find((c) => c.id === params.id);
+  // Lookup memoizado: la referencia solo cambia cuando cambia la lista o el id.
+  const coin = useMemo(
+    () => coins.find((c) => c.id === params.id),
+    [coins, params.id]
+  );
   const [updating, setUpdating] = useState(false);
   const [delta, setDelta] = useState<{ old?: number; neu: number } | null>(null);
+  const [zoomUri, setZoomUri] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!coin) return;
+    const coinId = coin.id;
+    const goEdit = () => nav.navigate('CoinEdit', { id: coinId });
+    const goDelete = () =>
+      Alert.alert('Eliminar moneda', 'Esta acción no se puede deshacer.', [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            await removeCoin(coinId);
+            haptic.warning();
+            nav.goBack();
+          },
+        },
+      ]);
+    nav.setOptions({
+      headerRight: () => (
+        <View style={{ flexDirection: 'row', gap: 16, marginRight: 4, alignItems: 'center' }}>
+          <Pressable
+            onPress={goEdit}
+            hitSlop={10}
+            accessibilityLabel="Editar"
+            style={({ pressed }) => ({ opacity: pressed ? 0.4 : 1 })}
+          >
+            <Ionicons name="pencil-outline" size={21} color={colors.primary} />
+          </Pressable>
+          <Pressable
+            onPress={goDelete}
+            hitSlop={10}
+            accessibilityLabel="Eliminar"
+            style={({ pressed }) => ({ opacity: pressed ? 0.4 : 1 })}
+          >
+            <Ionicons name="trash-outline" size={21} color={colors.err} />
+          </Pressable>
+        </View>
+      ),
+    });
+  }, [coin, nav, removeCoin]);
 
   if (!coin) {
     return (
-      <View className="flex-1 bg-bg items-center justify-center">
-        <Text className="text-white">Moneda no encontrada</Text>
+      <View style={{ flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: colors.text, fontSize: 15 }}>Moneda no encontrada</Text>
       </View>
     );
   }
@@ -51,6 +107,7 @@ export const CoinDetailScreen: React.FC = () => {
           ebay_price_not_found: false,
           updatedAt: now,
         });
+        haptic.success();
       } else {
         await addOrUpdateCoin({
           ...coin,
@@ -58,161 +115,230 @@ export const CoinDetailScreen: React.FC = () => {
           ebay_last_price_updated_at: now,
           updatedAt: now,
         });
-        Alert.alert('Sin resultados', 'No se ha encontrado ningún listing.');
+        Alert.alert('Sin resultados', 'No se ha encontrado ningún listing en eBay.');
       }
     } catch (e) {
-      Alert.alert('Error', (e as Error).message);
+      Alert.alert('Error eBay', (e as Error).message);
     } finally {
       setUpdating(false);
     }
   };
 
-  const confirmDelete = () =>
-    Alert.alert('Eliminar moneda', '¿Seguro? Esta acción no se puede deshacer.', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar',
-        style: 'destructive',
-        onPress: async () => {
-          await removeCoin(coin.id);
-          nav.goBack();
-        },
-      },
-    ]);
-
   const diff =
-    delta && delta.old !== undefined
-      ? percentDiff(delta.old, delta.neu)
-      : undefined;
+    delta && delta.old !== undefined ? percentDiff(delta.old, delta.neu) : undefined;
+  const subtitle =
+    coin.country +
+    ' · ' +
+    coin.year +
+    (coin.denomination ? ' · ' + coin.denomination : '');
 
   return (
-    <ScrollView className="flex-1 bg-bg p-3">
-      <Text className="text-white text-xl font-bold mb-3">{coin.title}</Text>
+    <>
+      <ImageZoomViewer uri={zoomUri} onClose={() => setZoomUri(null)} />
 
-      <View className="flex-row gap-2 mb-3">
-        <View className="flex-1">
-          <Text className="text-muted text-xs mb-1">Tu foto · Anverso</Text>
-          <Image source={{ uri: coin.frontImageUri }} className="w-full aspect-square rounded-md" />
-        </View>
-        {coin.backImageUri ? (
-          <View className="flex-1">
-            <Text className="text-muted text-xs mb-1">Tu foto · Reverso</Text>
-            <Image source={{ uri: coin.backImageUri }} className="w-full aspect-square rounded-md" />
-          </View>
-        ) : null}
-      </View>
+      <ScrollView
+        style={{ flex: 1, backgroundColor: colors.bg }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+      >
+        <Text
+          style={{
+            color: colors.text, fontSize: 22, fontWeight: '700',
+            letterSpacing: -0.3, marginBottom: 4,
+          }}
+        >
+          {coin.title}
+        </Text>
+        <Text style={{ color: colors.textMuted, fontSize: 13, marginBottom: 20 }}>
+          {subtitle}
+        </Text>
 
-      {(coin.officialObverseUrl || coin.officialReverseUrl) && (
-        <View className="flex-row gap-2 mb-3">
-          {coin.officialObverseUrl ? (
-            <View className="flex-1">
-              <Text className="text-muted text-xs mb-1">Oficial · Anverso</Text>
-              <Image
-                source={{ uri: coin.officialObverseUrl }}
-                className="w-full aspect-square rounded-md"
-                resizeMode="contain"
-              />
-            </View>
-          ) : null}
-          {coin.officialReverseUrl ? (
-            <View className="flex-1">
-              <Text className="text-muted text-xs mb-1">Oficial · Reverso</Text>
-              <Image
-                source={{ uri: coin.officialReverseUrl }}
-                className="w-full aspect-square rounded-md"
-                resizeMode="contain"
-              />
-            </View>
-          ) : null}
-        </View>
-      )}
-
-      <View className="bg-surface p-3 rounded-md mb-3">
-        <Row k="País" v={coin.country} />
-        <Row k="Año" v={String(coin.year)} />
-        {coin.denomination ? <Row k="Denominación" v={coin.denomination} /> : null}
-        {coin.composition ? <Row k="Composición" v={coin.composition} /> : null}
-        {coin.weight_g ? <Row k="Peso" v={`${coin.weight_g} g`} /> : null}
-        {coin.diameter_mm ? <Row k="Diámetro" v={`${coin.diameter_mm} mm`} /> : null}
-        {coin.mintage ? <Row k="Tirada" v={coin.mintage.toString()} /> : null}
-        {coin.rarity ? <Row k="Rareza" v={RARITY_LABEL_ES[coin.rarity]} /> : null}
-        <Row k="Conservación" v={CONDITION_LABEL_ES[coin.condition]} />
-        <View className="flex-row flex-wrap gap-1 mt-2">
-          {cat ? <Badge label={cat.name} emoji={cat.emoji} color={cat.color} /> : null}
-          {pos ? <Badge label={pos.name} emoji={pos.emoji} color={pos.color} /> : null}
-        </View>
-      </View>
-
-      <View className="bg-surface p-3 rounded-md mb-3">
-        <Text className="text-white font-semibold mb-2">Valoraciones</Text>
-        {coin.numista_typical_value !== undefined ? (
-          <Row
-            k="Numista (típico)"
-            v={formatCurrency(coin.numista_typical_value, 'EUR')}
-          />
-        ) : null}
-        {coin.numista_min_value !== undefined ? (
-          <Row
-            k="Numista (mín)"
-            v={formatCurrency(coin.numista_min_value, 'EUR')}
-          />
-        ) : null}
-        {coin.numista_max_value !== undefined ? (
-          <Row
-            k="Numista (máx)"
-            v={formatCurrency(coin.numista_max_value, 'EUR')}
-          />
-        ) : null}
-        <Row
-          k={`eBay último ${coin.ebay_last_price_date ? `(${formatDate(coin.ebay_last_price_date)})` : ''}`}
-          v={
-            coin.ebay_last_price !== undefined
-              ? formatCurrency(coin.ebay_last_price, coin.ebay_last_price_currency || 'EUR')
-              : '—'
-          }
-        />
-        {coin.ebay_price_not_found ? (
-          <Text className="text-accent text-xs mt-1">⚠️ Sin resultados en eBay</Text>
-        ) : null}
-        {delta && (
-          <View className="bg-bg p-2 rounded-md mt-2">
-            <Text className="text-muted text-xs">
-              Antes: {formatCurrency(delta.old, coin.ebay_last_price_currency || 'EUR')}
-            </Text>
-            <Text className="text-white">
-              Ahora: {formatCurrency(delta.neu, coin.ebay_last_price_currency || 'EUR')}{' '}
-              {diff !== undefined ? (
-                <Text className={diff >= 0 ? 'text-ok' : 'text-err'}>
-                  {diff >= 0 ? '▲' : '▼'} {formatPercent(diff)}
-                </Text>
+        {coin.frontImageUri ? (
+          <Section title="Tu fotografía">
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              <ImageTile label="Anverso" uri={coin.frontImageUri} onZoom={setZoomUri} />
+              {coin.backImageUri ? (
+                <ImageTile label="Reverso" uri={coin.backImageUri} onZoom={setZoomUri} />
               ) : null}
-            </Text>
-          </View>
-        )}
-      </View>
+            </View>
+          </Section>
+        ) : null}
 
-      {coin.notes ? (
-        <View className="bg-surface p-3 rounded-md mb-3">
-          <Text className="text-muted text-xs mb-1">Notas</Text>
-          <Text className="text-white">{coin.notes}</Text>
+        {(coin.officialObverseUrl || coin.officialReverseUrl) ? (
+          <Section title="Imagen oficial (Numista)">
+            <View style={{ flexDirection: 'row', gap: 12 }}>
+              {coin.officialObverseUrl ? (
+                <ImageTile
+                  label="Anverso"
+                  uri={coin.officialObverseUrl}
+                  contain
+                  onZoom={setZoomUri}
+                />
+              ) : null}
+              {coin.officialReverseUrl ? (
+                <ImageTile
+                  label="Reverso"
+                  uri={coin.officialReverseUrl}
+                  contain
+                  onZoom={setZoomUri}
+                />
+              ) : null}
+            </View>
+          </Section>
+        ) : null}
+
+        <Section title="Ficha">
+          <Card>
+            <DataRow k="País" v={coin.country} />
+            <DataRow k="Año" v={coin.year} />
+            {coin.denomination ? <DataRow k="Denominación" v={coin.denomination} /> : null}
+            {coin.composition ? <DataRow k="Composición" v={coin.composition} /> : null}
+            {coin.weight_g ? <DataRow k="Peso" v={`${coin.weight_g} g`} /> : null}
+            {coin.diameter_mm ? <DataRow k="Diámetro" v={`${coin.diameter_mm} mm`} /> : null}
+            {coin.mintage ? <DataRow k="Tirada" v={coin.mintage.toLocaleString()} /> : null}
+            {coin.rarity ? <DataRow k="Rareza" v={RARITY_LABEL_ES[coin.rarity]} /> : null}
+            <DataRow k="Conservación" v={CONDITION_LABEL_ES[coin.condition]} last />
+            {(cat || pos) && (
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 12 }}>
+                {cat ? <Badge label={cat.name} emoji={cat.emoji} color={cat.color} /> : null}
+                {pos ? <Badge label={pos.name} emoji={pos.emoji} color={pos.color} /> : null}
+              </View>
+            )}
+          </Card>
+        </Section>
+
+        <Section title="Valoraciones">
+          <Card>
+            {coin.numista_typical_value !== undefined ? (
+              <DataRow k="Numista típico" v={formatCurrency(coin.numista_typical_value, 'EUR')} />
+            ) : null}
+            {coin.numista_min_value !== undefined ? (
+              <DataRow k="Numista mín" v={formatCurrency(coin.numista_min_value, 'EUR')} />
+            ) : null}
+            {coin.numista_max_value !== undefined ? (
+              <DataRow k="Numista máx" v={formatCurrency(coin.numista_max_value, 'EUR')} />
+            ) : null}
+            <DataRow
+              k={'eBay' + (coin.ebay_last_price_date
+                ? '\n' + formatDate(coin.ebay_last_price_date)
+                : '')}
+              v={coin.ebay_last_price !== undefined
+                ? formatCurrency(coin.ebay_last_price, coin.ebay_last_price_currency || 'EUR')
+                : '—'}
+              last
+            />
+            {coin.ebay_price_not_found ? (
+              <Text style={{ color: colors.warn, fontSize: 12, marginTop: 8 }}>
+                Sin resultados en eBay
+              </Text>
+            ) : null}
+            {delta && (
+              <View
+                style={{
+                  backgroundColor: colors.surface2,
+                  borderRadius: 10,
+                  padding: 12,
+                  marginTop: 12,
+                }}
+              >
+                <Text style={{ color: colors.textMuted, fontSize: 11 }}>
+                  Antes: {formatCurrency(delta.old, coin.ebay_last_price_currency || 'EUR')}
+                </Text>
+                <Text style={{ color: colors.text, fontSize: 14, marginTop: 4 }}>
+                  Ahora: {formatCurrency(delta.neu, coin.ebay_last_price_currency || 'EUR')}
+                  {diff !== undefined ? (
+                    <Text style={{ color: diff >= 0 ? colors.ok : colors.err }}>
+                      {'  '}{diff >= 0 ? '+' : ''}{formatPercent(diff)}
+                    </Text>
+                  ) : null}
+                </Text>
+              </View>
+            )}
+          </Card>
+        </Section>
+
+        {coin.notes ? (
+          <Section title="Notas">
+            <Card>
+              <Text style={{ color: colors.text, fontSize: 14, lineHeight: 22 }}>
+                {coin.notes}
+              </Text>
+            </Card>
+          </Section>
+        ) : null}
+
+        <View style={{ gap: 10, marginTop: 8 }}>
+          <PrimaryButton
+            label="Actualizar precio eBay"
+            onPress={updatePrice}
+            loading={updating}
+            fullWidth
+          />
+          <PrimaryButton
+            label="Editar moneda"
+            onPress={() => nav.navigate('CoinEdit', { id: coin.id })}
+            variant="secondary"
+            fullWidth
+          />
+          <PrimaryButton
+            label="Eliminar moneda"
+            onPress={() =>
+              Alert.alert('Eliminar moneda', 'Esta acción no se puede deshacer.', [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                  text: 'Eliminar',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await removeCoin(coin.id);
+                    haptic.warning();
+                    nav.goBack();
+                  },
+                },
+              ])
+            }
+            variant="danger"
+            fullWidth
+          />
         </View>
-      ) : null}
-
-      <PrimaryButton
-        label="🔄 Actualizar precio (eBay)"
-        onPress={updatePrice}
-        loading={updating}
-      />
-      <View className="h-3" />
-      <PrimaryButton label="Eliminar" onPress={confirmDelete} variant="danger" />
-      <View className="h-16" />
-    </ScrollView>
+      </ScrollView>
+    </>
   );
 };
 
-const Row: React.FC<{ k: string; v: string }> = ({ k, v }) => (
-  <View className="flex-row mb-1">
-    <Text className="text-muted text-xs flex-1">{k}</Text>
-    <Text className="text-white text-xs">{v}</Text>
-  </View>
+const ImageTile: React.FC<{
+  label: string;
+  uri: string;
+  contain?: boolean;
+  onZoom: (uri: string) => void;
+}> = ({ label, uri, contain, onZoom }) => (
+  <Pressable style={{ flex: 1 }} onPress={() => onZoom(uri)} accessibilityLabel={`Ampliar ${label}`}>
+    <Text
+      style={{
+        color: colors.textSubtle, fontSize: 10, fontWeight: '700',
+        letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 6,
+      }}
+    >
+      {label}
+    </Text>
+    <View
+      style={{
+        width: '100%', aspectRatio: 1, borderRadius: 12,
+        overflow: 'hidden', backgroundColor: colors.surface2,
+        borderWidth: 1, borderColor: colors.border,
+      }}
+    >
+      <Image
+        source={{ uri }}
+        style={{ width: '100%', height: '100%' }}
+        resizeMode={contain ? 'contain' : 'cover'}
+      />
+      <View
+        style={{
+          position: 'absolute', bottom: 6, right: 6,
+          backgroundColor: colors.overlay, borderRadius: 8, padding: 4,
+        }}
+      >
+        <Ionicons name="expand-outline" size={13} color={colors.text} />
+      </View>
+    </View>
+  </Pressable>
 );

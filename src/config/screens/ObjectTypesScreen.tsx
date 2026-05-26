@@ -7,7 +7,7 @@ import type { ObjectType } from '@/types';
 export const ObjectTypesScreen: React.FC = () => {
   const { config, patchConfig } = useAppConfig();
   return (
-    <View className="flex-1 bg-bg p-3">
+    <View style={{ flex: 1, backgroundColor: '#0B0B0D', padding: 16 }}>
       <EditableListEditor
         title="Tipos de objetos"
         entries={config.objectTypes}

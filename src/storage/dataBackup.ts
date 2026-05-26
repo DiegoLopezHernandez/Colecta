@@ -1,8 +1,8 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { loadCoins, saveCoins } from './coinStorage';
-import { loadObjects, saveObjects } from './objectStorage';
+import { loadCoins, saveCoins, clearCoins } from './coinStorage';
+import { loadObjects, saveObjects, clearObjects } from './objectStorage';
 import { loadConfig, saveConfig } from './configStorage';
-import { loadSnapshots } from './snapshotStorage';
+import { loadSnapshots, clearSnapshots } from './snapshotStorage';
+import { replaceAllSnapshots } from '@/db';
 import type {
   AppConfig,
   CoinItem,
@@ -47,16 +47,14 @@ export async function importFromJson(json: string): Promise<void> {
   if (parsed.config) await saveConfig(parsed.config);
   if (parsed.coins) await saveCoins(parsed.coins);
   if (parsed.objects) await saveObjects(parsed.objects);
-  if (parsed.snapshots) {
-    await AsyncStorage.setItem('@app:snapshots', JSON.stringify(parsed.snapshots));
-  }
+  if (parsed.snapshots) await replaceAllSnapshots(parsed.snapshots);
 }
 
+/**
+ * Borra TODA la colección y los snapshots. La configuración se mantiene en
+ * AsyncStorage; resetearla es responsabilidad del llamante (DataMgmtScreen
+ * llama después a `setConfig(buildDefaultConfig())`).
+ */
 export async function wipeAllData(): Promise<void> {
-  await AsyncStorage.multiRemove([
-    '@app:config',
-    '@app:coins',
-    '@app:objects',
-    '@app:snapshots',
-  ]);
+  await Promise.all([clearCoins(), clearObjects(), clearSnapshots()]);
 }

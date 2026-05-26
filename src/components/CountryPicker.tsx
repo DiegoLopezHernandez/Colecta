@@ -7,18 +7,21 @@ import {
   TextInput,
   FlatList,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { COUNTRIES } from '@/utils/countries';
 
 interface Props {
   value?: string; // ISO Alpha-2
   onChange: (code: string, name: string) => void;
   placeholder?: string;
+  label?: string;
 }
 
 export const CountryPicker: React.FC<Props> = ({
   value,
   onChange,
   placeholder = 'Selecciona país',
+  label = 'País',
 }) => {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
@@ -38,32 +41,89 @@ export const CountryPicker: React.FC<Props> = ({
     <>
       <Pressable
         onPress={() => setOpen(true)}
-        className="bg-surface p-3 rounded-md border border-surface2"
+        style={({ pressed }) => ({
+          backgroundColor: '#1C1C20',
+          borderRadius: 10,
+          borderWidth: 1,
+          borderColor: '#26262B',
+          paddingVertical: 10,
+          paddingHorizontal: 12,
+          opacity: pressed ? 0.7 : 1,
+        })}
       >
-        <Text className="text-muted text-xs">País</Text>
-        <Text className="text-white text-base mt-1">
+        <Text
+          style={{
+            color: '#71717A',
+            fontSize: 11,
+            fontWeight: '600',
+            letterSpacing: 0.5,
+            textTransform: 'uppercase',
+          }}
+        >
+          {label}
+        </Text>
+        <Text
+          style={{
+            color: selected ? '#F4F4F5' : '#71717A',
+            fontSize: 15,
+            marginTop: 4,
+          }}
+        >
           {selected ? `${selected.name} (${selected.code})` : placeholder}
         </Text>
       </Pressable>
 
       <Modal visible={open} animationType="slide" onRequestClose={() => setOpen(false)}>
-        <View className="flex-1 bg-bg pt-12 px-4">
-          <View className="flex-row items-center mb-3">
-            <Pressable onPress={() => setOpen(false)} className="mr-3">
-              <Text className="text-primary text-base">Cerrar</Text>
-            </Pressable>
-            <Text className="text-white text-lg font-semibold">Países</Text>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#0B0B0D' }} edges={['top']}>
+          <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                marginBottom: 14,
+              }}
+            >
+              <Pressable onPress={() => setOpen(false)} hitSlop={8}>
+                <Text style={{ color: '#D4A24B', fontSize: 15, fontWeight: '500' }}>
+                  Cerrar
+                </Text>
+              </Pressable>
+              <Text
+                style={{
+                  color: '#F4F4F5',
+                  fontSize: 17,
+                  fontWeight: '600',
+                  marginLeft: 16,
+                }}
+              >
+                Países
+              </Text>
+            </View>
+            <TextInput
+              placeholder="Buscar país…"
+              placeholderTextColor="#71717A"
+              value={q}
+              onChangeText={setQ}
+              style={{
+                backgroundColor: '#1C1C20',
+                borderWidth: 1,
+                borderColor: '#26262B',
+                color: '#F4F4F5',
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                borderRadius: 10,
+                fontSize: 15,
+                marginBottom: 12,
+              }}
+            />
           </View>
-          <TextInput
-            placeholder="Buscar país…"
-            placeholderTextColor="#64748b"
-            value={q}
-            onChangeText={setQ}
-            className="bg-surface text-white px-3 py-2 rounded-md mb-3"
-          />
           <FlatList
             data={filtered}
             keyExtractor={(c) => c.code}
+            style={{ flex: 1 }}
+            keyboardShouldPersistTaps="handled"
+            initialNumToRender={30}
+            contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 24 }}
             renderItem={({ item }) => (
               <Pressable
                 onPress={() => {
@@ -71,16 +131,21 @@ export const CountryPicker: React.FC<Props> = ({
                   setOpen(false);
                   setQ('');
                 }}
-                className="py-3 border-b border-surface"
+                style={({ pressed }) => ({
+                  paddingVertical: 13,
+                  borderBottomWidth: 1,
+                  borderBottomColor: '#1C1C20',
+                  opacity: pressed ? 0.6 : 1,
+                })}
               >
-                <Text className="text-white text-base">
+                <Text style={{ color: '#F4F4F5', fontSize: 15 }}>
                   {item.name}{' '}
-                  <Text className="text-muted text-xs">({item.code})</Text>
+                  <Text style={{ color: '#71717A', fontSize: 12 }}>({item.code})</Text>
                 </Text>
               </Pressable>
             )}
           />
-        </View>
+        </SafeAreaView>
       </Modal>
     </>
   );

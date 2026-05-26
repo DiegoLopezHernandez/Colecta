@@ -1,42 +1,36 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { CoinsListScreen } from '../screens/CoinsListScreen';
-import { CoinAddCaptureScreen } from '../screens/CoinAddCaptureScreen';
+import { CoinAddCoinScreen } from '../screens/CoinAddCoinScreen';
 import { CoinAddIdentifyScreen } from '../screens/CoinAddIdentifyScreen';
 import { CoinAddConfirmScreen } from '../screens/CoinAddConfirmScreen';
 import { CoinDetailScreen } from '../screens/CoinDetailScreen';
+import { CoinEditScreen } from '../screens/CoinEditScreen';
 import { CoinsStatsScreen } from '../screens/CoinsStatsScreen';
+import { colors } from '@/theme/colors';
 
 export type CoinsStackParamList = {
   CoinsList: undefined;
-  AddCapture: undefined;
+  AddCoin: undefined;
   AddIdentify: {
-    obverseUri: string;
-    reverseUri: string;
+    obverseUri?: string;
+    reverseUri?: string;
     countryCode: string;
     countryName: string;
     year: number;
+    query?: string;
   };
-  AddConfirm:
-    | {
-        manual: false;
-        numistaId: number;
-        obverseUri: string;
-        reverseUri: string;
-        countryCode: string;
-        countryName: string;
-        year: number;
-      }
-    | {
-        manual: true;
-        obverseUri: string;
-        reverseUri: string;
-        countryCode: string;
-        countryName: string;
-        year: number;
-        numistaId?: number;
-      };
+  AddConfirm: {
+    numistaId?: number;
+    obverseUri?: string;
+    reverseUri?: string;
+    countryCode: string;
+    countryName: string;
+    year: number;
+    title?: string;
+  };
   CoinDetail: { id: string };
+  CoinEdit: { id: string };
   Stats: undefined;
 };
 
@@ -45,10 +39,11 @@ const Stack = createNativeStackNavigator<CoinsStackParamList>();
 export const CoinsNavigator: React.FC = () => (
   <Stack.Navigator
     screenOptions={{
-      headerStyle: { backgroundColor: '#0f172a' },
-      headerTintColor: '#fff',
-      headerTitleStyle: { color: '#fff' },
-      contentStyle: { backgroundColor: '#0f172a' },
+      headerStyle: { backgroundColor: colors.bg },
+      headerTintColor: colors.text,
+      headerTitleStyle: { color: colors.text, fontSize: 17, fontWeight: '600' },
+      headerShadowVisible: false,
+      contentStyle: { backgroundColor: colors.bg },
     }}
   >
     <Stack.Screen
@@ -57,8 +52,8 @@ export const CoinsNavigator: React.FC = () => (
       options={{ headerShown: false }}
     />
     <Stack.Screen
-      name="AddCapture"
-      component={CoinAddCaptureScreen}
+      name="AddCoin"
+      component={CoinAddCoinScreen}
       options={{ title: 'Añadir moneda' }}
     />
     <Stack.Screen
@@ -75,6 +70,11 @@ export const CoinsNavigator: React.FC = () => (
       name="CoinDetail"
       component={CoinDetailScreen}
       options={{ title: 'Detalle' }}
+    />
+    <Stack.Screen
+      name="CoinEdit"
+      component={CoinEditScreen}
+      options={{ title: 'Editar moneda' }}
     />
     <Stack.Screen
       name="Stats"

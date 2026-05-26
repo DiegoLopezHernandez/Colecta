@@ -38,11 +38,14 @@ export const ConfigProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const patchConfig = useCallback(
     async (patch: Partial<AppConfig>) => {
-      const next = { ...config, ...patch };
-      setConfigState(next);
-      await saveConfig(next);
+      let next: AppConfig | null = null;
+      setConfigState((prev) => {
+        next = { ...prev, ...patch };
+        return next;
+      });
+      if (next) await saveConfig(next);
     },
-    [config]
+    []
   );
 
   const value = useMemo(

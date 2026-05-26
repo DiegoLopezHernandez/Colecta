@@ -27,12 +27,49 @@ export const PickerSheet: React.FC<Props> = ({
 }) => {
   return (
     <Modal visible={open} animationType="slide" onRequestClose={onClose} transparent>
-      <View className="flex-1 justify-end bg-black/60">
-        <View className="bg-bg rounded-t-2xl p-4 max-h-[70%]">
-          <View className="flex-row items-center mb-3">
-            <Text className="text-white text-lg font-semibold flex-1">{title}</Text>
-            <Pressable onPress={onClose}>
-              <Text className="text-primary">Cerrar</Text>
+      <Pressable
+        onPress={onClose}
+        style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' }}
+      >
+        <Pressable
+          onPress={() => {}}
+          style={{
+            backgroundColor: '#141417',
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+            borderTopWidth: 1,
+            borderLeftWidth: 1,
+            borderRightWidth: 1,
+            borderColor: '#26262B',
+            paddingHorizontal: 16,
+            paddingTop: 12,
+            paddingBottom: 24,
+            maxHeight: '75%',
+          }}
+        >
+          {/* Handle visual */}
+          <View
+            style={{
+              width: 36,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: '#3A3A40',
+              alignSelf: 'center',
+              marginBottom: 12,
+            }}
+          />
+          <View
+            style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}
+          >
+            <Text
+              style={{ color: '#F4F4F5', fontSize: 17, fontWeight: '600', flex: 1 }}
+            >
+              {title}
+            </Text>
+            <Pressable onPress={onClose} hitSlop={8}>
+              <Text style={{ color: '#D4A24B', fontSize: 14, fontWeight: '500' }}>
+                Cerrar
+              </Text>
             </Pressable>
           </View>
           <FlatList
@@ -46,31 +83,49 @@ export const PickerSheet: React.FC<Props> = ({
                     onSelect(item.value);
                     onClose();
                   }}
-                  className="py-3 border-b border-surface flex-row items-center"
+                  style={({ pressed }) => ({
+                    paddingVertical: 14,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    borderBottomWidth: 1,
+                    borderBottomColor: '#1C1C20',
+                    opacity: pressed ? 0.6 : 1,
+                  })}
                 >
                   {item.emoji ? (
-                    <Text className="text-xl mr-2">{item.emoji}</Text>
+                    <Text style={{ fontSize: 18, marginRight: 10 }}>{item.emoji}</Text>
                   ) : null}
                   <Text
-                    className={`text-base ${isSel ? 'text-primary font-semibold' : 'text-white'}`}
+                    style={{
+                      color: isSel ? '#D4A24B' : '#F4F4F5',
+                      fontSize: 15,
+                      fontWeight: isSel ? '600' : '400',
+                    }}
                   >
                     {item.label}
                   </Text>
                   {item.color ? (
                     <View
-                      style={{ backgroundColor: item.color }}
-                      className="w-3 h-3 rounded-full ml-2"
+                      style={{
+                        backgroundColor: item.color,
+                        width: 10,
+                        height: 10,
+                        borderRadius: 5,
+                        marginLeft: 8,
+                      }}
                     />
                   ) : null}
                   {isSel ? (
-                    <Text className="ml-auto text-primary">✓</Text>
+                    <Text style={{ marginLeft: 'auto', color: '#D4A24B', fontSize: 15 }}>
+                      ✓
+                    </Text>
                   ) : null}
                 </Pressable>
               );
             }}
           />
-        </View>
-      </View>
+        </Pressable>
+      </Pressable>
     </Modal>
   );
 };

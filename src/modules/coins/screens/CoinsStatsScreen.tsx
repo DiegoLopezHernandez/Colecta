@@ -6,6 +6,8 @@ import { useAppConfig } from '@/context/ConfigContext';
 import { loadSnapshots } from '@/storage/snapshotStorage';
 import { formatCurrency, formatDate } from '@/utils/format';
 import { RARITY_ORDER } from '@/utils/conditions';
+import { Card } from '@/components/Card';
+import { Section } from '@/components/Section';
 import type { CollectionValueSnapshot } from '@/types';
 
 export const CoinsStatsScreen: React.FC = () => {
@@ -27,7 +29,7 @@ export const CoinsStatsScreen: React.FC = () => {
     name: `${p.emoji} ${p.name}`,
     count: coins.filter((c) => c.possessionStatusId === p.id).length,
     color: p.color,
-    legendFontColor: '#cbd5e1',
+    legendFontColor: '#A1A1AA',
     legendFontSize: 11,
   }));
 
@@ -36,7 +38,7 @@ export const CoinsStatsScreen: React.FC = () => {
       name: cat.name,
       population: coins.filter((c) => c.categoryId === cat.id).length,
       color: cat.color,
-      legendFontColor: '#cbd5e1',
+      legendFontColor: '#A1A1AA',
       legendFontSize: 11,
     }))
     .filter((x) => x.population > 0);
@@ -58,112 +60,184 @@ export const CoinsStatsScreen: React.FC = () => {
     .filter((d): d is string => !!d)
     .sort()[0];
 
-  const screenW = Dimensions.get('window').width - 24;
+  const screenW = Dimensions.get('window').width - 32;
 
   return (
-    <ScrollView className="flex-1 bg-bg p-3">
-      <Text className="text-white text-xl font-bold mb-3">Estadísticas</Text>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: '#0B0B0D' }}
+      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+    >
+      <Text
+        style={{
+          color: '#F4F4F5',
+          fontSize: 24,
+          fontWeight: '700',
+          letterSpacing: -0.3,
+          marginBottom: 16,
+        }}
+      >
+        Estadísticas
+      </Text>
 
-      <View className="bg-surface p-3 rounded-md mb-3 flex-row">
+      <Card style={{ flexDirection: 'row', marginBottom: 16, gap: 0 }}>
         <Stat label="Piezas" value={String(coins.length)} />
-        <Stat label="Valor Numista" value={formatCurrency(totalNumista, 'EUR')} />
-        <Stat label="Valor eBay" value={formatCurrency(totalEbay, 'EUR')} />
-      </View>
+        <Divider />
+        <Stat label="Numista" value={formatCurrency(totalNumista, 'EUR')} />
+        <Divider />
+        <Stat label="eBay" value={formatCurrency(totalEbay, 'EUR')} highlight />
+      </Card>
 
-      <View className="bg-surface p-3 rounded-md mb-3">
-        <Text className="text-white font-semibold mb-2">Por estado de posesión</Text>
-        {byStatus.map((s) => (
-          <View key={s.name} className="flex-row items-center mb-1">
-            <View style={{ backgroundColor: s.color }} className="w-3 h-3 rounded-full mr-2" />
-            <Text className="text-white flex-1">{s.name}</Text>
-            <Text className="text-muted">{s.count}</Text>
-          </View>
-        ))}
-      </View>
+      <Section title="Por estado de posesión">
+        <Card>
+          {byStatus.map((s, i) => (
+            <View
+              key={s.name}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: 8,
+                borderBottomWidth: i === byStatus.length - 1 ? 0 : 1,
+                borderBottomColor: '#1C1C20',
+              }}
+            >
+              <View
+                style={{
+                  backgroundColor: s.color,
+                  width: 10,
+                  height: 10,
+                  borderRadius: 5,
+                  marginRight: 10,
+                }}
+              />
+              <Text style={{ color: '#F4F4F5', flex: 1, fontSize: 14 }}>{s.name}</Text>
+              <Text style={{ color: '#A1A1AA', fontSize: 14, fontWeight: '500' }}>
+                {s.count}
+              </Text>
+            </View>
+          ))}
+        </Card>
+      </Section>
 
       {byCategory.length > 0 && (
-        <View className="bg-surface p-3 rounded-md mb-3">
-          <Text className="text-white font-semibold mb-2">Por categoría</Text>
-          <PieChart
-            data={byCategory}
-            width={screenW - 24}
-            height={180}
-            chartConfig={chartConfig}
-            accessor="population"
-            backgroundColor="transparent"
-            paddingLeft="0"
-            absolute
-          />
-        </View>
+        <Section title="Por categoría">
+          <Card>
+            <PieChart
+              data={byCategory}
+              width={screenW - 28}
+              height={180}
+              chartConfig={chartConfig}
+              accessor="population"
+              backgroundColor="transparent"
+              paddingLeft="0"
+              absolute
+            />
+          </Card>
+        </Section>
       )}
 
       {mostValuable && (
-        <View className="bg-surface p-3 rounded-md mb-3">
-          <Text className="text-white font-semibold">Más valiosa</Text>
-          <Text className="text-muted">
-            {mostValuable.title} ·{' '}
-            {formatCurrency(
-              mostValuable.ebay_last_price ?? mostValuable.numista_typical_value,
-              mostValuable.ebay_last_price_currency || 'EUR'
-            )}
-          </Text>
-        </View>
+        <Section title="Más valiosa">
+          <Card>
+            <Text style={{ color: '#F4F4F5', fontSize: 15, fontWeight: '600' }}>
+              {mostValuable.title}
+            </Text>
+            <Text style={{ color: '#D4A24B', fontSize: 14, marginTop: 4 }}>
+              {formatCurrency(
+                mostValuable.ebay_last_price ?? mostValuable.numista_typical_value,
+                mostValuable.ebay_last_price_currency || 'EUR'
+              )}
+            </Text>
+          </Card>
+        </Section>
       )}
       {rarest && (
-        <View className="bg-surface p-3 rounded-md mb-3">
-          <Text className="text-white font-semibold">Más rara</Text>
-          <Text className="text-muted">
-            {rarest.title} · {rarest.rarity}
-          </Text>
-        </View>
+        <Section title="Más rara">
+          <Card>
+            <Text style={{ color: '#F4F4F5', fontSize: 15, fontWeight: '600' }}>
+              {rarest.title}
+            </Text>
+            <Text style={{ color: '#A1A1AA', fontSize: 13, marginTop: 4 }}>
+              {rarest.rarity}
+            </Text>
+          </Card>
+        </Section>
       )}
       {oldestPriceDate && (
-        <View className="bg-surface p-3 rounded-md mb-3">
-          <Text className="text-muted text-xs">Precio más antiguo</Text>
-          <Text className="text-white">{formatDate(oldestPriceDate)}</Text>
-        </View>
+        <Section title="Precio más antiguo">
+          <Card>
+            <Text style={{ color: '#F4F4F5', fontSize: 15 }}>
+              {formatDate(oldestPriceDate)}
+            </Text>
+          </Card>
+        </Section>
       )}
 
       {snapshots.length > 1 && (
-        <View className="bg-surface p-3 rounded-md mb-3">
-          <Text className="text-white font-semibold mb-2">Histórico de valor</Text>
-          <LineChart
-            data={{
-              labels: snapshots
-                .slice(-6)
-                .map((s) => formatDate(s.date).slice(0, 5)),
-              datasets: [
-                {
-                  data: snapshots.slice(-6).map((s) => s.totalEbayValue),
-                },
-              ],
-            }}
-            width={screenW - 24}
-            height={180}
-            chartConfig={chartConfig}
-            bezier
-            yAxisSuffix="€"
-          />
-        </View>
+        <Section title="Histórico de valor">
+          <Card>
+            <LineChart
+              data={{
+                labels: snapshots
+                  .slice(-6)
+                  .map((s) => formatDate(s.date).slice(0, 5)),
+                datasets: [
+                  {
+                    data: snapshots.slice(-6).map((s) => s.totalEbayValue),
+                  },
+                ],
+              }}
+              width={screenW - 28}
+              height={180}
+              chartConfig={chartConfig}
+              bezier
+              yAxisSuffix="€"
+            />
+          </Card>
+        </Section>
       )}
-      <View className="h-16" />
     </ScrollView>
   );
 };
 
-const Stat: React.FC<{ label: string; value: string }> = ({ label, value }) => (
-  <View className="flex-1 items-center">
-    <Text className="text-muted text-xs">{label}</Text>
-    <Text className="text-white text-base font-semibold mt-1" numberOfLines={1}>
+const Stat: React.FC<{ label: string; value: string; highlight?: boolean }> = ({
+  label,
+  value,
+  highlight,
+}) => (
+  <View style={{ flex: 1, alignItems: 'center', paddingVertical: 4 }}>
+    <Text
+      style={{
+        color: '#71717A',
+        fontSize: 10,
+        fontWeight: '600',
+        letterSpacing: 0.6,
+        textTransform: 'uppercase',
+      }}
+    >
+      {label}
+    </Text>
+    <Text
+      numberOfLines={1}
+      style={{
+        color: highlight ? '#D4A24B' : '#F4F4F5',
+        fontSize: 16,
+        fontWeight: '700',
+        marginTop: 4,
+      }}
+    >
       {value}
     </Text>
   </View>
 );
 
+const Divider: React.FC = () => (
+  <View style={{ width: 1, backgroundColor: '#26262B', marginVertical: 4 }} />
+);
+
 const chartConfig = {
-  backgroundGradientFrom: '#1e293b',
-  backgroundGradientTo: '#1e293b',
-  color: (op = 1) => `rgba(59,130,246,${op})`,
-  labelColor: () => '#cbd5e1',
+  backgroundGradientFrom: '#141417',
+  backgroundGradientTo: '#141417',
+  color: (op = 1) => `rgba(212,162,75,${op})`,
+  labelColor: () => '#A1A1AA',
   decimalPlaces: 0,
 };

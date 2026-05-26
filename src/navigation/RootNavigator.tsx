@@ -18,12 +18,20 @@ export const RootNavigator: React.FC = () => (
     screenOptions={({ route }) => ({
       headerShown: false,
       tabBarStyle: {
-        backgroundColor: '#0f172a',
-        borderTopColor: '#1e293b',
+        backgroundColor: '#0B0B0D',
+        borderTopColor: '#26262B',
         borderTopWidth: 1,
+        height: 62,
+        paddingTop: 6,
+        paddingBottom: 8,
       },
-      tabBarActiveTintColor: '#3b82f6',
-      tabBarInactiveTintColor: '#64748b',
+      tabBarLabelStyle: {
+        fontSize: 11,
+        fontWeight: '500',
+        marginTop: 2,
+      },
+      tabBarActiveTintColor: '#D4A24B',
+      tabBarInactiveTintColor: '#71717A',
       tabBarIcon: ({ color, size }) => {
         const map: Record<keyof RootTabsParamList, keyof typeof Ionicons.glyphMap> = {
           CoinsTab: 'pricetags',

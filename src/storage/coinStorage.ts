@@ -1,38 +1,48 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { CoinItem } from '@/types';
+import {
+  selectAllJson,
+  upsertJson,
+  deleteById,
+  clearTable,
+  replaceAllJson,
+} from '@/db';
 
-const KEY = '@app:coins';
+/**
+ * Storage de monedas respaldado por SQLite. Las firmas se mantienen idénticas a
+ * la versión anterior basada en AsyncStorage para no romper consumidores
+ * existentes (CollectionContext, dataBackup).
+ *
+ * Diferencia clave de rendimiento: `upsertCoin` y `deleteCoin` afectan a una
+ * única fila, no reescriben toda la colección.
+ */
 
 export async function loadCoins(): Promise<CoinItem[]> {
   try {
-    const raw = await AsyncStorage.getItem(KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as CoinItem[];
+    return await selectAllJson<CoinItem>('coins');
   } catch (e) {
     console.warn('[coinStorage] loadCoins error', e);
     return [];
   }
 }
 
+/**
+ * Reemplaza TODA la colección. Solo se usa para importar backups o vaciar.
+ * Para añadir/editar una sola moneda usar `upsertCoin`.
+ */
 export async function saveCoins(items: CoinItem[]): Promise<void> {
-  await AsyncStorage.setItem(KEY, JSON.stringify(items));
+  await replaceAllJson('coins', items);
 }
 
 export async function upsertCoin(item: CoinItem): Promise<CoinItem[]> {
-  const list = await loadCoins();
-  const idx = list.findIndex((x) => x.id === item.id);
-  if (idx >= 0) list[idx] = item;
-  else list.unshift(item);
-  await saveCoins(list);
-  return list;
+  await upsertJson('coins', item);
+  return await loadCoins();
 }
 
 export async function deleteCoin(id: string): Promise<CoinItem[]> {
-  const list = (await loadCoins()).filter((x) => x.id !== id);
-  await saveCoins(list);
-  return list;
+  await deleteById('coins', id);
+  return await loadCoins();
 }
 
 export async function clearCoins(): Promise<void> {
-  await AsyncStorage.removeItem(KEY);
+  await clearTable('coins');
 }

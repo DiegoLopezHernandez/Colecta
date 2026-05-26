@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { View, Text, Image, ScrollView, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import type { NativeStackNavigationProp, RouteProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useCollection } from '@/context/CollectionContext';
 import { useAppConfig } from '@/context/ConfigContext';
 import { fetchLastPrice } from '@/services/ebayService';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { Badge } from '@/components/Badge';
+import { Card } from '@/components/Card';
+import { Section } from '@/components/Section';
 import { formatCurrency, formatDate, percentDiff, formatPercent } from '@/utils/format';
 import type { ObjectsStackParamList } from '../navigation/ObjectsNavigator';
 
@@ -24,8 +27,8 @@ export const ObjectDetailScreen: React.FC = () => {
 
   if (!obj) {
     return (
-      <View className="flex-1 bg-bg items-center justify-center">
-        <Text className="text-white">Objeto no encontrado</Text>
+      <View style={{ flex: 1, backgroundColor: '#0B0B0D', alignItems: 'center', justifyContent: 'center' }}>
+        <Text style={{ color: '#F4F4F5', fontSize: 15 }}>Objeto no encontrado</Text>
       </View>
     );
   }
@@ -68,7 +71,7 @@ export const ObjectDetailScreen: React.FC = () => {
   };
 
   const confirmDelete = () =>
-    Alert.alert('Eliminar objeto', '¿Seguro?', [
+    Alert.alert('Eliminar objeto', 'Esta acción no se puede deshacer.', [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Eliminar',
@@ -80,90 +83,86 @@ export const ObjectDetailScreen: React.FC = () => {
       },
     ]);
 
-  const diff =
-    delta && delta.old !== undefined ? percentDiff(delta.old, delta.neu) : undefined;
+  const diff = delta && delta.old !== undefined ? percentDiff(delta.old, delta.neu) : undefined;
 
   return (
-    <ScrollView className="flex-1 bg-bg p-3">
-      <Text className="text-white text-xl font-bold mb-3">{obj.name}</Text>
+    <ScrollView style={{ flex: 1, backgroundColor: '#0B0B0D' }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+      <Text style={{ color: '#F4F4F5', fontSize: 24, fontWeight: '700', letterSpacing: -0.3, marginBottom: 16 }}>
+        {obj.name}
+      </Text>
 
-      <View className="flex-row gap-2 mb-3">
-        <View className="flex-1">
-          <Image
-            source={{ uri: obj.frontImageUri }}
-            className="w-full aspect-square rounded-md"
+      <Section title="Fotografías">
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <ImageTile uri={obj.frontImageUri} />
+          {obj.backImageUri ? <ImageTile uri={obj.backImageUri} /> : null}
+        </View>
+      </Section>
+
+      <Section title="Clasificación">
+        <Card>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+            {t ? <Badge label={t.name} emoji={t.emoji} /> : null}
+            {c ? <Badge label={c.name} emoji={c.emoji} color={c.color} /> : null}
+            {p ? <Badge label={p.name} emoji={p.emoji} color={p.color} /> : null}
+          </View>
+        </Card>
+      </Section>
+
+      <Section title="Precio">
+        <Card>
+          <Row
+            k={'eBay' + (obj.ebay_last_price_date ? ' · ' + formatDate(obj.ebay_last_price_date) : '')}
+            v={obj.ebay_last_price !== undefined ? formatCurrency(obj.ebay_last_price, obj.ebay_last_price_currency || 'EUR') : '-'}
+            last
           />
-        </View>
-        {obj.backImageUri ? (
-          <View className="flex-1">
-            <Image
-              source={{ uri: obj.backImageUri }}
-              className="w-full aspect-square rounded-md"
-            />
-          </View>
-        ) : null}
-      </View>
-
-      <View className="bg-surface p-3 rounded-md mb-3">
-        <View className="flex-row flex-wrap gap-1">
-          {t ? <Badge label={t.name} emoji={t.emoji} /> : null}
-          {c ? <Badge label={c.name} emoji={c.emoji} color={c.color} /> : null}
-          {p ? <Badge label={p.name} emoji={p.emoji} color={p.color} /> : null}
-        </View>
-      </View>
-
-      <View className="bg-surface p-3 rounded-md mb-3">
-        <Text className="text-white font-semibold mb-2">Precio</Text>
-        <Row
-          k={`eBay ${obj.ebay_last_price_date ? `(${formatDate(obj.ebay_last_price_date)})` : ''}`}
-          v={
-            obj.ebay_last_price !== undefined
-              ? formatCurrency(obj.ebay_last_price, obj.ebay_last_price_currency || 'EUR')
-              : '—'
-          }
-        />
-        {obj.ebay_price_not_found ? (
-          <Text className="text-accent text-xs mt-1">⚠️ Sin resultados en eBay</Text>
-        ) : null}
-        {delta && (
-          <View className="bg-bg p-2 rounded-md mt-2">
-            <Text className="text-muted text-xs">
-              Antes: {formatCurrency(delta.old, obj.ebay_last_price_currency || 'EUR')}
-            </Text>
-            <Text className="text-white">
-              Ahora: {formatCurrency(delta.neu, obj.ebay_last_price_currency || 'EUR')}{' '}
-              {diff !== undefined ? (
-                <Text className={diff >= 0 ? 'text-ok' : 'text-err'}>
-                  {diff >= 0 ? '▲' : '▼'} {formatPercent(diff)}
-                </Text>
-              ) : null}
-            </Text>
-          </View>
-        )}
-      </View>
+          {obj.ebay_price_not_found ? (
+            <Text style={{ color: '#FBBF24', fontSize: 12, marginTop: 8 }}>Sin resultados en eBay</Text>
+          ) : null}
+          {delta && (
+            <View style={{ backgroundColor: '#1C1C20', borderRadius: 10, padding: 10, marginTop: 12 }}>
+              <Text style={{ color: '#A1A1AA', fontSize: 11 }}>
+                Antes: {formatCurrency(delta.old, obj.ebay_last_price_currency || 'EUR')}
+              </Text>
+              <Text style={{ color: '#F4F4F5', fontSize: 13, marginTop: 2 }}>
+                Ahora: {formatCurrency(delta.neu, obj.ebay_last_price_currency || 'EUR')}{' '}
+                {diff !== undefined ? (
+                  <Text style={{ color: diff >= 0 ? '#4ADE80' : '#F87171' }}>
+                    {diff >= 0 ? '+ ' : '- '}{formatPercent(diff)}
+                  </Text>
+                ) : null}
+              </Text>
+            </View>
+          )}
+        </Card>
+      </Section>
 
       {obj.notes ? (
-        <View className="bg-surface p-3 rounded-md mb-3">
-          <Text className="text-muted text-xs mb-1">Notas</Text>
-          <Text className="text-white">{obj.notes}</Text>
-        </View>
+        <Section title="Notas">
+          <Card>
+            <Text style={{ color: '#F4F4F5', fontSize: 14, lineHeight: 20 }}>{obj.notes}</Text>
+          </Card>
+        </Section>
       ) : null}
 
-      <PrimaryButton
-        label="🔄 Actualizar precio (eBay)"
-        onPress={updatePrice}
-        loading={updating}
-      />
-      <View className="h-3" />
-      <PrimaryButton label="Eliminar" onPress={confirmDelete} variant="danger" />
-      <View className="h-16" />
+      <View style={{ gap: 10, marginTop: 8 }}>
+        <PrimaryButton label="Actualizar precio eBay" onPress={updatePrice} loading={updating} fullWidth />
+        <PrimaryButton label="Eliminar objeto" onPress={confirmDelete} variant="danger" fullWidth />
+      </View>
     </ScrollView>
   );
 };
 
-const Row: React.FC<{ k: string; v: string }> = ({ k, v }) => (
-  <View className="flex-row mb-1">
-    <Text className="text-muted text-xs flex-1">{k}</Text>
-    <Text className="text-white text-xs">{v}</Text>
+const ImageTile: React.FC<{ uri: string }> = ({ uri }) => (
+  <View style={{ flex: 1 }}>
+    <View style={{ width: '100%', aspectRatio: 1, borderRadius: 12, overflow: 'hidden', backgroundColor: '#1C1C20', borderWidth: 1, borderColor: '#26262B' }}>
+      <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+    </View>
+  </View>
+);
+
+const Row: React.FC<{ k: string; v: string; last?: boolean }> = ({ k, v, last }) => (
+  <View style={{ flexDirection: 'row', paddingVertical: 7, borderBottomWidth: last ? 0 : 1, borderBottomColor: '#1C1C20' }}>
+    <Text style={{ color: '#A1A1AA', fontSize: 12, flex: 1 }}>{k}</Text>
+    <Text style={{ color: '#F4F4F5', fontSize: 13, fontWeight: '500', textAlign: 'right' }}>{v}</Text>
   </View>
 );

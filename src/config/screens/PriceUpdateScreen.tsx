@@ -6,6 +6,8 @@ import { useCollection } from '@/context/CollectionContext';
 import { fetchLastPrice } from '@/services/ebayService';
 import { addSnapshot } from '@/storage/snapshotStorage';
 import { PrimaryButton } from '@/components/PrimaryButton';
+import { Section } from '@/components/Section';
+import { Card } from '@/components/Card';
 import { sleep, formatDateTime } from '@/utils/format';
 import type { CoinItem, ObjectItem } from '@/types';
 
@@ -120,16 +122,14 @@ export const PriceUpdateScreen: React.FC = () => {
         summary.errors++;
       }
       setDone(i + 1);
-      // delay configurable
       if (i < all.length - 1) await sleep(config.ebayRequestDelay);
     }
 
     await replaceAll(nextCoins, nextObjects);
 
-    const totalEbay = nextCoins.reduce(
-      (s, c) => s + (c.ebay_last_price ?? 0),
-      0
-    ) + nextObjects.reduce((s, o) => s + (o.ebay_last_price ?? 0), 0);
+    const totalEbay =
+      nextCoins.reduce((s, c) => s + (c.ebay_last_price ?? 0), 0) +
+      nextObjects.reduce((s, o) => s + (o.ebay_last_price ?? 0), 0);
     const totalNumista = nextCoins.reduce(
       (s, c) => s + (c.numista_typical_value ?? 0),
       0
@@ -154,64 +154,114 @@ export const PriceUpdateScreen: React.FC = () => {
   };
 
   return (
-    <ScrollView className="flex-1 bg-bg p-3">
-      <Text className="text-white text-xl font-bold mb-3">
-        Actualización de precios
-      </Text>
+    <ScrollView
+      style={{ flex: 1, backgroundColor: '#0B0B0D' }}
+      contentContainerStyle={{ padding: 16, paddingBottom: 40 }}
+    >
+      <Section title="Estado">
+        <Card>
+          <Text
+            style={{
+              color: '#71717A',
+              fontSize: 11,
+              fontWeight: '600',
+              letterSpacing: 0.5,
+              textTransform: 'uppercase',
+            }}
+          >
+            Última actualización completa
+          </Text>
+          <Text style={{ color: '#F4F4F5', fontSize: 15, marginTop: 4 }}>
+            {config.lastFullUpdateAt ? formatDateTime(config.lastFullUpdateAt) : 'Nunca'}
+          </Text>
+        </Card>
+      </Section>
 
-      <View className="bg-surface rounded-md p-3 mb-2">
-        <Text className="text-muted text-xs">Última actualización completa</Text>
-        <Text className="text-white">
-          {config.lastFullUpdateAt
-            ? formatDateTime(config.lastFullUpdateAt)
-            : 'Nunca'}
-        </Text>
-      </View>
-
-      <View className="bg-surface rounded-md p-3 mb-2">
-        <Text className="text-white mb-1">
-          Delay entre peticiones eBay: {config.ebayRequestDelay} ms
-        </Text>
-        <Slider
-          minimumValue={200}
-          maximumValue={2000}
-          step={50}
-          value={config.ebayRequestDelay}
-          onValueChange={(v) =>
-            patchConfig({ ebayRequestDelay: Math.round(v) })
-          }
-          minimumTrackTintColor="#3b82f6"
-          maximumTrackTintColor="#334155"
-        />
-      </View>
-
-      <View className="bg-surface rounded-md p-3 mb-3 flex-row items-center">
-        <Text className="text-white flex-1">Solo piezas con precio existente</Text>
-        <Switch
-          value={config.priceUpdateOnlyWithPrice}
-          onValueChange={(v) => patchConfig({ priceUpdateOnlyWithPrice: v })}
-        />
-      </View>
+      <Section title="Parámetros">
+        <Card>
+          <Text style={{ color: '#F4F4F5', fontSize: 14, marginBottom: 4 }}>
+            Delay entre peticiones: {config.ebayRequestDelay} ms
+          </Text>
+          <Text style={{ color: '#71717A', fontSize: 12, marginBottom: 8 }}>
+            Más alto reduce el riesgo de rate-limit.
+          </Text>
+          <Slider
+            minimumValue={200}
+            maximumValue={2000}
+            step={50}
+            value={config.ebayRequestDelay}
+            onValueChange={(v) =>
+              patchConfig({ ebayRequestDelay: Math.round(v) })
+            }
+            minimumTrackTintColor="#D4A24B"
+            maximumTrackTintColor="#26262B"
+            thumbTintColor="#D4A24B"
+          />
+        </Card>
+        <View style={{ height: 10 }} />
+        <Card>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#F4F4F5', fontSize: 14, fontWeight: '500' }}>
+                Solo piezas con precio existente
+              </Text>
+              <Text style={{ color: '#71717A', fontSize: 12, marginTop: 2 }}>
+                Salta las que aún no han sido valoradas.
+              </Text>
+            </View>
+            <Switch
+              value={config.priceUpdateOnlyWithPrice}
+              onValueChange={(v) => patchConfig({ priceUpdateOnlyWithPrice: v })}
+              trackColor={{ false: '#26262B', true: '#D4A24B' }}
+              thumbColor={config.priceUpdateOnlyWithPrice ? '#F4F4F5' : '#A1A1AA'}
+              ios_backgroundColor="#26262B"
+            />
+          </View>
+        </Card>
+      </Section>
 
       {running ? (
         <View>
-          <Text className="text-white text-center mb-2">
+          <Text
+            style={{
+              color: '#F4F4F5',
+              fontSize: 14,
+              textAlign: 'center',
+              marginBottom: 8,
+            }}
+          >
             Actualizando {done} de {total}
           </Text>
-          <View className="bg-surface h-3 rounded-full mb-3 overflow-hidden">
+          <View
+            style={{
+              height: 8,
+              backgroundColor: '#1C1C20',
+              borderRadius: 999,
+              overflow: 'hidden',
+              marginBottom: 14,
+              borderWidth: 1,
+              borderColor: '#26262B',
+            }}
+          >
             <View
-              className="bg-primary h-3"
               style={{
+                backgroundColor: '#D4A24B',
+                height: '100%',
                 width: total ? `${(done / total) * 100}%` : '0%',
               }}
             />
           </View>
-          <PrimaryButton label="Cancelar" onPress={cancel} variant="danger" />
+          <PrimaryButton label="Cancelar" onPress={cancel} variant="danger" fullWidth />
         </View>
       ) : (
-        <PrimaryButton label="🔁 Actualizar todos los precios" onPress={start} />
+        <PrimaryButton
+          label="Actualizar todos los precios"
+          icon="🔁"
+          onPress={start}
+          size="lg"
+          fullWidth
+        />
       )}
-      <View className="h-16" />
     </ScrollView>
   );
 };

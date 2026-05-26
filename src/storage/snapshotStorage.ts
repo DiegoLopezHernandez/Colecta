@@ -1,29 +1,37 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { CollectionValueSnapshot } from '@/types';
+import {
+  selectAllJson,
+  upsertSnapshot,
+  clearTable,
+  replaceAllSnapshots,
+} from '@/db';
 
-const KEY = '@app:snapshots';
+const MAX_SNAPSHOTS = 200;
 
 export async function loadSnapshots(): Promise<CollectionValueSnapshot[]> {
   try {
-    const raw = await AsyncStorage.getItem(KEY);
-    if (!raw) return [];
-    return JSON.parse(raw) as CollectionValueSnapshot[];
+    return await selectAllJson<CollectionValueSnapshot>('snapshots');
   } catch {
     return [];
   }
 }
 
+/**
+ * Añade un snapshot y poda los más antiguos si se supera el máximo.
+ */
 export async function addSnapshot(
   s: CollectionValueSnapshot
 ): Promise<CollectionValueSnapshot[]> {
-  const list = await loadSnapshots();
-  list.push(s);
-  // máximo 200 snapshots
-  const trimmed = list.slice(-200);
-  await AsyncStorage.setItem(KEY, JSON.stringify(trimmed));
-  return trimmed;
+  await upsertSnapshot(s);
+  const all = await loadSnapshots();
+  if (all.length > MAX_SNAPSHOTS) {
+    const trimmed = all.slice(-MAX_SNAPSHOTS);
+    await replaceAllSnapshots(trimmed);
+    return trimmed;
+  }
+  return all;
 }
 
 export async function clearSnapshots(): Promise<void> {
-  await AsyncStorage.removeItem(KEY);
+  await clearTable('snapshots');
 }
