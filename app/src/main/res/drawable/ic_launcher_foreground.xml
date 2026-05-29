@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Icono adaptativo: moneda dorada con letra "C" central.
+    El área central segura del adaptive icon es 72x72dp dentro del lienzo 108x108dp.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Aro exterior dorado -->
+    <path
+        android:pathData="M54,54m-34,0a34,34 0,1 1,68 0a34,34 0,1 1,-68 0z"
+        android:fillColor="#D4A24B" />
+    <!-- Borde interior más oscuro para profundidad -->
+    <path
+        android:pathData="M54,54m-30,0a30,30 0,1 1,60 0a30,30 0,1 1,-60 0z"
+        android:fillColor="#B88835" />
+    <!-- Cara interior dorada -->
+    <path
+        android:pathData="M54,54m-27,0a27,27 0,1 1,54 0a27,27 0,1 1,-54 0z"
+        android:fillColor="#E8B85C" />
+    <!-- Letra C estilizada -->
+    <path
+        android:fillColor="#1A1206"
+        android:pathData="M54,34
+            A20,20 0 1 0 74,54
+            L66,54
+            A12,12 0 1 1 54,42
+            A12,12 0 0 1 64,48
+            L72,44
+            A20,20 0 0 0 54,34Z" />
+    <!-- Brillo superior izquierdo -->
+    <path
+        android:pathData="M44,40
+            A18,18 0 0 0 38,49
+            L34,47
+            A22,22 0 0 1 41,37 Z"
+        android:fillColor="#F4D08A"
+        android:fillAlpha="0.55" />
+</vector>

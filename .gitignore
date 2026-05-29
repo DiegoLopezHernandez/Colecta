@@ -1,0 +1,23 @@
+# Gradle
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+
+# Caches
+.cxx/
+captures/
+
+# Builds
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
