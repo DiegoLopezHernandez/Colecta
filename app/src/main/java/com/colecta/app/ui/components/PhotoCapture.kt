@@ -42,6 +42,7 @@ import java.io.File
  * Tras una captura/selección la imagen se persiste a `filesDir/photos/<uuid>.jpg`
  * con redimensionado a 1600px y compresión JPEG calidad 80.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PhotoCaptureCard(
     label: String,

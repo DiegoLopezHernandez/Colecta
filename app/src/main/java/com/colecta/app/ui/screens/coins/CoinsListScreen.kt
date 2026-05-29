@@ -264,9 +264,10 @@ private fun FiltersSheet(filters: CoinFilters, vm: CoinsListViewModel, onClose: 
             shape = RoundedCornerShape(12.dp),
         )
 
+        val pmax = filters.priceMax
         SectionTitle(
-            if (filters.priceMax == null) "Precio máx: sin límite"
-            else "Precio máx: ${filters.priceMax.toInt()} €",
+            if (pmax == null) "Precio máx: sin límite"
+            else "Precio máx: ${pmax.toInt()} €",
         )
         Slider(
             value = filters.priceMax ?: 1000f,

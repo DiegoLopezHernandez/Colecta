@@ -249,8 +249,8 @@ fun LabeledField(
 fun Pill(
     label: String,
     active: Boolean = false,
-    onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onClick: () -> Unit,
 ) {
     val bg = if (active) ColectaColors.Primary else ColectaColors.Surface2
     val fg = if (active) ColectaColors.OnPrimary else ColectaColors.OnBg
